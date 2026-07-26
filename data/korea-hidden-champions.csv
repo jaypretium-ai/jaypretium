@@ -1,0 +1,31 @@
+Rank,Company,Korean Name,Ticker,Exchange,Sector,Niche / Moat,Approx ROE,Earnings/EPS Trend,Key Risk
+1,HD Hyundai Marine Solution,HD현대마린솔루션,443060,KOSPI,Industrials,Aftermarket parts & service for world's largest marine-engine fleet (recurring annuity),~40-67%,Revenue +22% (2024); high-margin,Short listing history; parent related-party ties
+2,HD Hyundai Electric,현대일렉트릭,267260,KOSPI,Power Equipment,Ultra-high-voltage transformers; #1 US / #2 Saudi; multi-year backlog,~34%,EPS +~89% 2025E,Capex-cycle peak; rich valuation
+3,Samyang Foods,삼양식품,003230,KOSPI,Food,Buldak fire-noodle - dominant Korean ramen exporter (70%+ exports),~33-39%,Rev +45% (2024); doubled since 2022,Single-brand/fad concentration; rich valuation
+4,Hanmi Semiconductor,한미반도체,042700,KOSPI,Semicap,HBM thermo-compression bonders ~71% global share (SK Hynix),~28-40%,Rev +250% (2024); cooling,Extreme HBM cyclicality; customer concentration
+5,HPSP,에이치피에스피,403870,KOSDAQ,Semicap,High-pressure H2 annealing - global monopoly; >50% op margin,~31%,Strong multi-year; >50% margins,Patent litigation; single-product dependence
+6,Silicon2,실리콘투,257720,KOSDAQ,K-Beauty,K-beauty export/distribution platform (picks & shovels) for 100+ countries,~44-47%,Rev +61% (2025),Thin-margin distribution; K-beauty hype cycle
+7,Leeno Industrial,리노공업,058470,KOSDAQ,Semicap,Ultra-precision test pins/sockets ~70% share; consumable model,~21%,~16%/yr net profit CAGR (steady),Chip-test cyclicality; premium valuation
+8,Classys,클래시스,214150,KOSDAQ,Med Device,HIFU/RF aesthetic devices ~55% Korea; razor-and-blade cartridges,~30%,Rev +39% (2025); >50% op margin,Bain Capital PE stake overhang
+9,NICE Information Service,나이스평가정보,030190,KOSPI,Financial Data,Personal/corporate credit-bureau duopoly; regulatory + data moat,~19%,Steady grower; Value-Up dividend plan,Big-Tech alt credit scoring erosion
+10,Alteogen,알테오젠,196170,KOSDAQ,Biotech,SC-injection conversion platform; Keytruda SC with Merck + 5 partners,Inflecting (~57% op margin 2025),Turned strongly profitable,Merck/Keytruda concentration; high valuation
+11,Park Systems,파크시스템스,140860,KOSDAQ,Semicap,Atomic force microscopes - global #1 (~80% industrial AFM),~17-20%,Net income +74% (2024); 7 yrs double-digit,Small niche market; capex-sensitive
+12,Dentium,덴티움,145720,KOSPI,Med Device,Dental implants; ~44% China VBP share; local China production,~24%,>30% op margin; NI dipped 2024,Overwhelming China/VBP dependence
+13,JYP Entertainment,제이와이피엔터테인먼트,035900,KOSDAQ,Entertainment,Most capital-efficient K-pop agency (Stray Kids/TWICE/ITZY),~29%,Rev +37% NI +64% (2025),Artist-renewal risk; release-cycle swings
+14,Hugel,휴젤,145020,KOSDAQ,Med Device,Botulinum toxin (Letybo) - only Korean maker with US+China approval,~17%,OP +41% NI +46% (2024),Ownership overhang; toxin price competition
+15,Pharmaresearch,파마리서치,214450,KOSDAQ,Med/Pharma,PDRN regenerative aesthetics (Rejuran) category leader,~20%,Rev +34% (2024); ~35% op margin,Aesthetics fad; PDRN commoditization
+16,LIG Nex1,엘아이지넥스원,079550,KOSPI,Defense,Precision-guided munitions/missiles (KM-SAM); export backlog,~17-18%,Strong multi-year on exports,Lumpy orders; geopolitics/financing
+17,ISU Petasys,이수페타시스,007660,KOSPI,Tech Hardware,High-layer-count PCBs #1 global; ~70% AI-related (Nvidia ecosystem),~15-20%,Record 2024; AI-driven,AI-capex concentration; dilution risk
+18,ISC,아이에스시,095340,KOSDAQ,Semicap,Silicone-rubber test sockets >50% share; AI-accelerator demand,~9-30% (cyclical),Rev +26% (2025); volatile,Pronounced earnings cyclicality
+19,Hansol Chemical,한솔케미칼,014680,KOSPI,Materials,Electronic-grade H2O2 + precursors; Samsung/SK Hynix qualified,~13-15%,Earnings +16% (2024),Semiconductor capex cycle
+20,HK inno.N,에이치케이이노엔,195940,KOSDAQ,Pharma,K-CAB (P-CAB) - #1 Korean anti-ulcer drug 5 yrs; 48-country licensing,High single/low double,Rev/OP steadily up; US NDA filed,Single-flagship reliance; US regulatory
+21,LS Electric,엘에스일렉트릭,010120,KOSPI,Power Equipment,#1 Korean switchgear; US data-center power deals,~14%,OP +~51% 2025E,Cyclical; already re-rated
+22,SNT Dynamics,에스엔티다이내믹스,003570,KOSPI,Defense,Tank/howitzer transmissions (K2/K9) - domestic near-monopoly,Solid double-digit,Rising on defense exports,Platform concentration; holdco control
+23,Orion,오리온,271560,KOSPI,Food,Choco Pie - localized EM dominance (~67% Vietnam); vertical integration,~11%,NI +39% (2024); ~16% op margin,FX (China/Russia/Vietnam); China softness
+24,Douzone Bizon,더존비즈온,012510,KOSPI,Software,Dominant ERP/accounting/e-tax SaaS for Korean SMBs; switching costs,~12-17%,Rev ~+11%; FCF +27% (2025),Cloud transition must reaccelerate EPS
+25,Soulbrain,솔브레인,357780,KOSDAQ,Materials,Semi wet chemicals (ultra-pure HF/etchants); localization tailwind,Mid-teens (softer 2025),Rev +7% (2025); NI -33%,Memory-cycle; two-buyer concentration
+26,Vieworks,뷰웍스,100120,KOSDAQ,Med Device,Digital X-ray flat-panel detectors; OEM design-in moat,~13%,Mature/cyclical; ~27bn NI (2024),Lumpy OEM cycles; competition
+27,SOOP,숲(아프리카TV),067160,KOSDAQ,Platform,#1 Korean live-streaming (donation economy); gained from Twitch exit,~21%,Rev +20% NI +36% (2024),Donation-model regulation; global unproven
+28,Cosmecca Korea,코스메카코리아,241710,KOSDAQ,K-Beauty,Cosmetics ODM with US onshore capacity (Englewood Lab) for indie brands,~14-20%,NI +92% (2024); inflecting,Small scale; indie-brand concentration
+29,APR,에이피알,278470,KOSPI,K-Beauty,Beauty-tech devices (AGE-R) + Medicube; razor-and-blade device model,~25-35% (TTM spike higher),Rev +60% Q4-2024,Rich valuation; trend-driven demand
+30,Vitzrocell,비츠로셀,082920,KOSDAQ,Defense,Lithium primary batteries - defense/smart-meter/oilfield niche leader,Healthy (small-cap),Steady niche demand,Mature slow-growth end markets; liquidity
