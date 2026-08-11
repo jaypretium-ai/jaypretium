@@ -1,0 +1,11 @@
+__pycache__/
+*.pyc
+.ipynb_checkpoints/
+.venv/
+venv/
+# generated backtest outputs (synthetic or real) are not committed
+outputs/**
+!outputs/.gitkeep
+data/*.csv
+data/*.parquet
+*.log
