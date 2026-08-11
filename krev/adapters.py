@@ -204,3 +204,37 @@ def load_meta_csv(path: str, colmap: dict | None = None) -> pd.DataFrame:
     if colmap:
         df = df.rename(columns={v: k for k, v in colmap.items()})
     return data_schema.validate_meta(df)
+
+
+def melt_ciq_wide(path: str, colmap: dict) -> pd.DataFrame:
+    """
+    Convert a *wide* CIQ export (one row per asof x ticker, with FY1 and FY2 in
+    separate columns) into the long consensus schema (one row per asof x ticker x FY).
+
+    `colmap` maps these logical names -> your column names:
+        asof, ticker, op_fy1, op_fy2, np_fy1, np_fy2, eps_fy1, eps_fy2,
+        fy1_end, fy2_end, and optionally tp, n_est, n_up_1m, n_dn_1m.
+    See docs/CIQ_EXTRACTION.md.
+    """
+    df = pd.read_csv(path) if str(path).lower().endswith(".csv") else pd.read_excel(path)
+    g = lambda k: df[colmap[k]] if k in colmap and colmap[k] in df.columns else None
+
+    def _leg(fy: str) -> pd.DataFrame:
+        rec = pd.DataFrame(
+            {
+                "asof": g("asof"),
+                "ticker": g("ticker"),
+                "fiscal": fy.upper(),
+                "fy_end": g(f"{fy}_end"),
+                "op": g(f"op_{fy}"),
+                "np_ctrl": g(f"np_{fy}"),
+                "eps": g(f"eps_{fy}"),
+            }
+        )
+        # target price / breadth are usually single (not per-FY); attach to FY1
+        for opt in ("tp", "n_est", "n_up_1m", "n_dn_1m"):
+            rec[opt] = g(opt) if fy == "fy1" else float("nan")
+        return rec
+
+    long = pd.concat([_leg("fy1"), _leg("fy2")], ignore_index=True)
+    return data_schema.validate_consensus(long)
