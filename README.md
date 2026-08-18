@@ -61,6 +61,18 @@ sensitivity, Fama-MacBeth, event-time, an Excel workbook, three charts, and a
 revision→return link baked in, a correct engine recovers a positive, significant
 revision Long-Short and a monotonic post-earnings drift — that is the unit test.
 
+## Interactive app
+
+```bash
+pip install -r requirements.txt
+streamlit run app.py      # opens a dashboard; starts in synthetic demo mode
+```
+
+Sidebar controls (universe, factor, cost/borrow, weighting, dates), tabbed
+tables/charts, Q1–Q10 answer sheet, and an Excel download. Switch to "Upload
+real CSVs" to run on your consensus panel. Deploy free on Streamlit Community
+Cloud / Hugging Face Spaces — see [docs/APP.md](docs/APP.md).
+
 ## Running the real study
 
 1. Obtain a point-in-time consensus panel — see **[docs/DATA_GUIDE.md](docs/DATA_GUIDE.md)**.

@@ -4,6 +4,7 @@ scipy>=1.10
 statsmodels>=0.14
 matplotlib>=3.7
 openpyxl>=3.1
+streamlit>=1.30   # interactive app (app.py)
 # Optional, only for free KRX price/universe loading:
 # pykrx>=1.0.45
 # finance-datareader>=0.9.50
