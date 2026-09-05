@@ -92,6 +92,17 @@ u["Days_listed"] = piv_close.notna().sum()
 stk_f = (win(piv_stk, 250) / win(piv_stk, 250).shift(1))
 u["ShareJump_250D"] = ((stk_f >= 1.3) | (stk_f <= 0.77)).sum()
 
+
+# ---------------- liquidity stability (12M trough of rolling-20D ADV) & VaR proxy ----------------
+amt_pos = piv_amt.where(piv_amt > 0)
+roll20 = amt_pos.iloc[-250:].rolling(20, min_periods=15).mean()
+u["ADV20_min12M"] = roll20.min().reindex(u.index)
+u["ADV_Stability"] = u["ADV20_min12M"] / u["ADV_min"]
+u["DailyVol60"] = win(piv_ret, 60).std()
+u["VaR99_1D"] = 2.326 * u["DailyVol60"]          # parametric 1D 99% VaR per name (no correlation)
+u["MaxPosPct_500_Trough"] = np.minimum(POS_LIMIT, PART * DAYS * u["ADV20_min12M"] / BOOKS["500"])
+u["MaxPosPct_1000_Trough"] = np.minimum(POS_LIMIT, PART * DAYS * u["ADV20_min12M"] / BOOKS["1000"])
+
 # ---------------- classification flags ----------------
 name = u["Name"].fillna("")
 u["Is_SPAC"] = name.str.contains("스팩") | u["Dept"].fillna("").str.contains("SPAC")

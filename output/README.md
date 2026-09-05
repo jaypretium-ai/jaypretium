@@ -1,7 +1,7 @@
 # Korea L/S Universe under BBAS Liquidity Limits (as of 2026-09-03)
 
 Deliverables
-- `Korea_Universe_BBAS_2026-09-03.xlsx` — 유니버스(492종목), Tier, 특수상황 하이라이트, 우선주 pair, 지주 NAV, 아이디어, 제외/Event-Play 후보, CIQ 수식 열
+- `Korea_Universe_BBAS_2026-09-03.xlsx` — 유니버스(492종목), Tier, 특수상황 하이라이트, PreTrade_Check(모델 포트 BBAS 컴플라이언스·3일 청산·VaR 점검), 우선주 pair, 지주 NAV, 아이디어, 제외/Event-Play 후보, 12M ADV 저점 stress, CIQ 수식 열
 - `Korea_Universe_BBAS_Memo_2026-09-03.docx` / `.pdf` — 스크리닝 메모 (결론, 방법론, 룰 매핑, 결과, 특수상황, 밸류 처리, 아이디어, 반대관점, 다음 단계)
 
 Data
