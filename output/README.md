@@ -1,4 +1,6 @@
-# Korea L/S Universe under BBAS Liquidity Limits (as of 2026-09-03) — v3 dynamic sizing
+# Korea L/S Universe under BBAS Liquidity Limits (as of 2026-09-03) — v4
+
+v4: (1) DART_Verify 시트 — 이벤트 태그 69종목 검증 우선순위 P1/P2/P3. (2) Alpha_Risk 시트 — 아이디어별 expected alpha(가정 입력) vs Solo/Component VaR, Research ROI. (3) Cov 시트(유니버스 60D 공분산) + PreTrade_Check의 공분산 기반 marginal/component VaR.
 
 v3: ADV 하한 폐지. 유니버스 = 시총 ≥ 3,000억 & Event sleeve(10일) 기준 1%+ 사이징 가능 (659종목). MaxPos = min(룰 한도, 20% × sleeve DTL × ADV / Book), sleeve = Core 3일 / Alpha 5일 / Event 10일. 포트 레벨: 유동 sleeve ≥ 40% Gross, Trim 트리거 DTL > 2× 목표.
 
@@ -17,6 +19,6 @@ git clone --depth 1 --filter=blob:none --no-checkout https://github.com/FinanceD
 cd /home/user/financedata/marcap && git checkout HEAD -- data/marcap-2025.parquet data/marcap-2026.parquet
 git clone --depth 1 https://github.com/FinanceData/stock_master /home/user/financedata/stock_master
 pip install pandas pyarrow openpyxl && npm install docx@8
-python3 scripts/build_universe.py && python3 scripts/build_xlsx.py && python3 scripts/export_memo_data.py && node scripts/build_docx.js Korea_Universe_BBAS_Memo.docx
+python3 scripts/build_universe.py && python3 scripts/build_risk.py && python3 scripts/build_xlsx.py && python3 scripts/export_memo_data.py && node scripts/build_docx.js Korea_Universe_BBAS_Memo.docx
 ```
 Paths inside the scripts point to the session scratchpad; adjust `OUTDIR`/`MARCAP_DIR` as needed.

@@ -43,9 +43,9 @@ const tn = D.tier_n;
 const kids = [];
 
 // ---------------- Title ----------------
-kids.push(new Paragraph({ children: [run("Billionfold Korea L/S — BBAS 유동성 리밋 기반 종목 유니버스 (v3: 다이나믹 사이징)", { size: 30, bold: true, color: NAVY })], spacing: { after: 60 } }));
+kids.push(new Paragraph({ children: [run("Billionfold Korea L/S — BBAS 유동성 리밋 기반 종목 유니버스 (v4)", { size: 30, bold: true, color: NAVY })], spacing: { after: 60 } }));
 kids.push(p(`Screening Memo | 데이터 기준일 ${D.asof} (KRX 종가) | 작성 2026-09-05 | 첨부: Korea_Universe_BBAS_${D.asof}.xlsx`, { size: 17, color: "595959", after: 40 }));
-kids.push(p("Rule 참고: BBAS Rule.xlsx (2026-07-31), Billionfold Junior Guide (2026-09-05). v3 변경: ADV 하한 폐지 → sleeve별 DTL 기반 다이나믹 사이징, 최소 포지션 1%", { size: 17, color: "595959", after: 160 }));
+kids.push(p("Rule 참고: BBAS Rule.xlsx (2026-07-31), Billionfold Junior Guide (2026-09-05). v4 변경: (1) DART 검증 우선순위 (2) expected alpha vs risk budget (3) 60D 공분산 기반 marginal/component VaR", { size: 17, color: "595959", after: 160 }));
 
 // ---------------- 0. 결론 ----------------
 kids.push(h1("0. 핵심 결론"));
@@ -54,7 +54,9 @@ kids.push(bb("유니버스 = ", `${D.n_univ}종목 (시총 ≥ 3,000억 & 제외
 kids.push(bb("v2(3일 전량·2% 하한) 대비: ", `492 → ${D.n_univ}종목. 6% 풀사이즈 가능 종목 329(3일) → ${D.n6_500_alpha}(5일). 1,000억 Book은 6% 가능 ${D.n6_1000_alpha}, 1% 이상 ${D.n1_1000_alpha}. Gross capacity(Σ MaxPos, Alpha) 500억 ${pct0(D.cap_500_alpha)}p / 1,000억 ${pct0(D.cap_1000_alpha)}p.`));
 kids.push(bb("포트 레벨 유동성 룰 2개로 종목 하한을 대체: ", "(1) DTL ≤ 3일 포지션 합계 ≥ Gross의 40% → Gross-cut 30%·Book-cut 33%가 겹쳐도 유동 sleeve에서 소화. (2) Trim 트리거: DTL이 목표의 2배를 10거래일 연속 초과 시 축소. PreTrade_Check 시트에 구현."));
 kids.push(bb("Stress 실증: ", `12개월 rolling-20D ADV 저점 / 현재 ADV 중위 ${D.med_stab.toFixed(2)}x (${pct0(D.share_stab_lt50)}가 0.5x 미만). 저점 ADV·Alpha 5일 기준 6% 가능 ${D.n6_500_alpha_trough}종목(500억). 진입 사이즈는 min(20D,60D) ADV, 모니터링은 20D — 비대칭 적용 권장.`));
-kids.push(bb("VaR가 먼저 binding: ", `60D 변동성 중위 ${pct0(D.vol60_med_ann)} → 종목별 1D 99% VaR proxy 중위 ${pct1(D.var_med)}. 샘플 포트(Gross ${pct0(D.pt["Gross exposure"])}, pair 중심) VaR proxy는 무상관 기준 ${pct1(-D.pt["Portfolio 1D 99% VaR — zero-correlation (√Σ(w×VaR)²)"])}로 -1% 한도의 2배. 유동성보다 VaR 예산이 Gross를 결정.`));
+kids.push(bb("VaR (60D 공분산 기준으로 교체): ", `샘플 포트(Gross ${pct0(D.risk.gross)}, pair 중심) 1D 99% VaR = ${pct1(D.risk.port_var99)} — 무상관 가정 ${pct1(D.risk.zero_corr)}, 비분산 합 ${pct1(D.risk.sum_standalone)}. Pair hedge가 잡히면서 VaR가 23% 줄었으나 여전히 -1% 한도의 1.7배. 현 구조 유지 시 한도 내 Gross ≈ ${pct0(D.pt["Gross allowed at VaR limit (linear scale)"])}. 최대 기여는 삼성전기우(단독 leg 기준 포트 VaR의 48%) → pref leg 축소가 가장 효율적인 VaR 절감.`));
+kids.push(bb("Expected alpha vs risk budget: ", `아이디어 11건 중 연환산 NAV 기여 ≥ 0.5%p는 ${11 - D.n_ideas_lowroi}건(저PBR basket)뿐. 6% 단일 한도 × E[ret] 2-9%에서 개별 아이디어 기여는 0.1-0.5%p. 500억 Book에서 연 5-8% alpha를 만들려면 동시 15-20건 필요 → 유니버스 폭보다 아이디어 회전율이 binding. 유니버스 ${D.n_lowroi_univ}종목은 MaxPos×30%로도 0.5%p 미만(Research ROI Low).`));
+kids.push(bb("DART 검증 우선순위: ", `이벤트 태그 ${D.n_event}종목을 P1 ${D.dart_counts["1"]}(아이디어 사용 또는 actionable+정량 시그널) / P2 ${D.dart_counts["2"]}(actionable이나 시그널 없음 → 종료 가능성) / P3 ${D.dart_counts["3"]}(구조적 테마)로 분류. 확인할 공시 유형과 입력란은 DART_Verify 시트.`));
 kids.push(bb("특수상황 하이라이트 ", `${D.n_special}종목 (이벤트 태그 ${D.n_event} + 정량 시그널 ${D.n_special - D.n_event}). 엑셀 Universe 시트 노란 배경.`));
 kids.push(bb("밸류에이션·ROE·ROIC: ", "본 환경에서 Capital IQ/DART 접근 불가 → 엑셀에 CIQ 수식(IFERROR 래핑) 삽입. CIQ 연결 Excel에서 열면 종목별·Tier 평균 자동. 추정치 기재하지 않음."));
 kids.push(bb("시장 regime: ", `유니버스 시총가중 YTD ${pct0(D.capw_ytd)}, YTD +100% 이상 ${D.n_ytd100}종목 vs -30% 이하 ${D.n_ytdm30}종목. 대형주 다수가 52주 고점 대비 -30~-50%. ±15% 일변동 2회 이상(Short cap -4%) ${D.n_vol15}종목(L1에서 ${D.n_vol15_L1}).`));
@@ -95,8 +97,9 @@ kids.push(bb("시총 3천억 미만: ", `ADV20 ≥ 30억인 종목 ${D.n_small_l
 kids.push(h1("4. 특수상황(Special Situation) 하이라이트"));
 kids.push(note(`이벤트 태그 ${D.n_event}종목 (모델 지식 기반, 검증 필요) + 정량 시그널 ${D.n_special - D.n_event}종목 (거래정지 이력·주식수 급변·신규상장·거래대금 급증·1M 급등락·우선주). 전체 목록은 엑셀 Special_Situations 시트.`));
 kids.push(h2("4-1. 이벤트 태그 종목 (시총순)"));
-kids.push(table(["종목", "Tier", "유형", "내용 (검증 필요)", "시총(억)", "ADV20(억)", "YTD", "MaxPos Alpha@500억"],
-  D.special_event.map(r => [r[0], r[2], r[3], r[4], r[5], r[6], r[7], r[8]]), [1250, 450, 1000, 3600, 800, 700, 600, 700], { size: 13 }));
+kids.push(table(["P", "종목", "Tier", "유형", "내용 (검증 필요)", "시총(억)", "ADV20(억)", "YTD", "MaxPos Alpha"],
+  D.special_event.map(r => [r[9], r[0], r[2], r[3], r[4], r[5], r[6], r[7], r[8]]), [350, 1200, 400, 1000, 3450, 800, 700, 600, 600], { size: 13 }));
+kids.push(note("P = DART 검증 우선순위 (P1 즉시 / P2 종료 여부 먼저 / P3 최근 공시만). 전체 목록·확인 공시 유형·입력란은 DART_Verify 시트."));
 kids.push(h2("4-2. 정량 시그널만 있는 종목 (상위 25, 시총순)"));
 kids.push(table(["종목", "Tier", "시그널", "시총(억)", "ADV20(억)", "YTD", "1M"],
   D.special_quant.map(r => [r[0], r[2], r[3], r[4], r[5], r[6], r[7]]), [1300, 500, 4000, 900, 800, 700, 700], { size: 13 }));
@@ -117,13 +120,28 @@ kids.push(table(["Tier", "ADV 저점/현재 (중위)", "해석"], [
   ["L4", D.stab_by_tier["L4 Event-only (≥1% @10d)"].toFixed(2) + "x", "구조적 저유동성. Event exit date 필수"],
 ], [1200, 2000, 5800], { size: 14 }));
 kids.push(bb("적용: ", `저점 ADV 기준 Alpha 6% 가능 ${D.n6_500_alpha_trough}종목, 1%+ ${D.n1_500_alpha_trough}종목(500억). 저점을 편입 기준으로 쓰면 과잉 → 진입 사이즈는 min(20D,60D), 저점은 'Trough' 열로 모니터링·Trim 판단에만 사용.`));
-kids.push(h2("5-2. VaR 관점 — 편입비보다 먼저 걸리는 한도"));
-kids.push(bb("종목 VaR proxy: ", `2.33 × 60D 일변동성. 유니버스 중위 ${pct1(D.var_med)}, L1 ${pct1(D.var_med_L1)}. 6% 단일 포지션의 VaR 기여 0.7-0.8%p → -1% 한도의 3/4.`));
-kids.push(bb("샘플 포트(PreTrade_Check, 22종목, pair 중심): ", `Gross ${pct0(D.pt["Gross exposure"])}, Net ${pct0(D.pt["Net exposure (dollar)"])} (한도 ${pct1(Math.min(0.1 * D.pt["Gross exposure"], 0.15))} → 선물 hedge 필요), TOP5 Long ${pct0(D.pt["Long TOP5 sum"])}, Event sleeve ${pct0(D.pt["Event Play aggregate |w| (sleeve E)"])}, 유동 sleeve ${pct0(D.pt["Liquid sleeve share of gross (DTL ≤ Core days)"])}. VaR proxy 무상관 ${pct1(-D.pt["Portfolio 1D 99% VaR — zero-correlation (√Σ(w×VaR)²)"])} ~ 비분산 ${pct1(-D.pt["Portfolio 1D 99% VaR — undiversified (Σ|w|×VaR)"])}. -1%를 맞추려면 Gross 25-35% 또는 pair 상관 0.8 이상.`));
-kids.push(bb("시사점: ", "BBAS ②-1 Target Vol 8% 보정이 유일한 완충. 초기 3개월은 pair·저베타 구조로 실현 vol 8% 아래 유지가 Gross 확보의 전제. outright 개별주는 2-3% 이상 어렵다."));
+kids.push(h2("5-2. VaR — 60D 공분산 기반 marginal / component VaR"));
+kids.push(bb("방법: ", "유니버스 659종목 60D 일수익률 공분산(BBAS 3M 윈도우, Cov 시트 내장). 포트 σ = (w'Σw)^0.5, VaR99 = 2.326σ. Marginal VaR_i = 2.326(Σw)_i/σ, Component VaR_i = w_i × MVaR_i (합 = 포트 VaR). PreTrade_Check에서 임의 포트에 대해 자동 계산. obs<40 신규상장은 중위 분산·무상관 처리."));
+kids.push(table(["샘플 포트 (Gross " + pct0(D.risk.gross) + ")", "1D 99% VaR", "vs -1% 한도"], [
+  ["비분산 합 (Σ|w|×VaR_i)", pct1(D.risk.sum_standalone), (D.risk.sum_standalone / 0.01).toFixed(1) + "x"],
+  ["무상관 (√Σ(w×VaR_i)²)", pct1(D.risk.zero_corr), (D.risk.zero_corr / 0.01).toFixed(1) + "x"],
+  ["공분산 기준 (w'Σw)", pct1(D.risk.port_var99), (D.risk.port_var99 / 0.01).toFixed(1) + "x"],
+  ["한도 내 Gross (선형 스케일)", pct0(D.pt["Gross allowed at VaR limit (linear scale)"]), "현 구조 유지 시"],
+], [3600, 1800, 1800], { size: 14 }));
+kids.push(p(""));
+kids.push(table(["종목", "w", "Standalone VaR", "Marginal VaR", "Component VaR", "% of VaR"], D.comp_top.concat(D.comp_bottom), [2000, 800, 1300, 1300, 1300, 1000], { size: 13 }));
+kids.push(bb("해석: ", "삼성전기우 6%가 포트 VaR의 절반. 보통주 short(-4%, ±15% cap)가 hedge로 잡히지만 60D 창에서 pref/common 상관이 낮아 잔여 VaR가 큼. 현대차 pair는 component가 음수(순 hedge). 무상관 proxy 대비 공분산 VaR가 23% 낮음 = pair hedge benefit이 실제로 존재하나 -1%를 맞추기엔 부족."));
+kids.push(bb("시사점: ", "VaR 예산은 종목 수가 아니라 잔여 팩터(pref-common spread, 지주-자회사 spread) 변동성에 의해 소비됨. 60D 창이 급등락 국면이라 과대 추정 가능성 — 250D 창으로 재계산 시 VaR proxy 중위가 11% → 10%로 소폭 하락에 그침. BBAS ②-1 Target Vol 8% 보정이 유일한 완충."));
 kids.push(h2("5-3. PreTrade_Check 시트"));
 kids.push(bullet("입력: Code / Side / Weight / Sleeve(C·A·E). 종목별: 룰 한도(6/8/10%, Short -4%), sleeve DTL 목표, 다이나믹 한도 = min(룰, 20%×DTL×ADV/Book), DTL, 저점 DTL, Trim 트리거, Gross-cut 30% 시 Day-1 매도액과 ADV 참여율."));
 kids.push(bullet("포트: Gross, Net vs Min(10%×Gross,15%), TOP5 ≤ 25%, 3천-7천억 합산 ≤ 7%(Event 제외), Event sleeve 합산, 유동 sleeve(DTL≤3일) ≥ 40%, 다이나믹 한도 초과·Trim 건수, VaR proxy 2종."));
+
+kids.push(h2("5-4. Expected alpha vs risk budget (Alpha_Risk 시트)"));
+kids.push(note("Upside/Downside/확률/기간은 가정 입력(파란색). E[ret] = p×up + (1−p)×dn. NAV 기여 p.a. = notional × E[ret] × 12/기간. Solo VaR = 아이디어 단독 공분산 VaR. Research ROI 기준 0.5%p p.a. (Params 조정 가능)."));
+kids.push(table(["#", "아이디어", "Notional", "Up", "Dn", "P", "기간", "E[ret]", "NAV p.a.", "Solo VaR", "Comp VaR", "Alpha/VaR", "ROI"], D.ideas_risk.map(r => r.map(String)), [300, 2000, 650, 500, 500, 450, 500, 600, 700, 700, 700, 700, 500], { size: 12 }));
+kids.push(bb("결과: ", `11건 중 ROI OK ${11 - D.n_ideas_lowroi}건. 6% 한도에서 pair 아이디어의 연 NAV 기여는 0.3-0.5%p, 단일 3% 포지션은 0.1-0.2%p. 1% Event 포지션(#11)은 0.08%p → 리서치 시간 대비 비효율이 수치로 확인됨.`));
+kids.push(bb("Alpha/VaR 관점: ", "저PBR basket(1.06x), 현대차 pair(1.44x), 삼성전기 pair(0.80x)가 상위. SK스퀘어/하이닉스(0.24x)·삼성물산(0.29x)은 spread vol 대비 기대수익이 낮아 사이징 축소 대상. 기준: Alpha p.a./VaR ≥ 1.0x면 리스크 예산 효율적."));
+kids.push(bb("Book 운영 함의: ", "연 5-8% NAV alpha 목표라면 동시 15-20건 아이디어 필요 → 파이프라인 회전(월 3-5건 신규)이 핵심 KPI. 유니버스 확대보다 idea velocity와 6% 한도 내 conviction sizing이 성과를 결정."));
 
 // ---------------- 6. 투자 아이디어 ----------------
 kids.push(h1("6. 투자 아이디어 (룰 내 실행 가능성 기준)"));
@@ -154,16 +172,19 @@ kids.push(bb("1% 포지션의 경제성: ", `L3·L4 ${tn["L3 Small size (1-3% @5
 kids.push(bb("RM 커뮤니케이션: ", "\"ADV ≥ X\"가 \"k × ADV / Book\"보다 설명이 쉬움. 미팅에서는 리서치 하한(Alpha ADV 5억, Event 2.5억)을 소프트 기준으로, 실제 제약은 다이나믹 공식 + 유동 sleeve 40%로 정리."));
 kids.push(bb("Book-cut·Gross-cut 중첩: ", "3일에 Gross 40-50% 축소 상황에서 유동 sleeve 40%는 빠듯. sleeve 하한을 50%로 올리면 L2-L4 여지가 줄어듦 — trade-off는 BBAS 미팅에서 Gross Cap 확정 후 결정."));
 kids.push(bb("데이터 regime: ", `시총가중 YTD ${pct0(D.capw_ytd)}에 대형주 다수가 고점 대비 -40~50%. ADV·변동성 모두 급등락 국면 값. 정상화 시 ADV 절반(저점 실증 ${D.med_stab.toFixed(2)}x)이 base case.`));
-kids.push(bb("이벤트 태그 신뢰도: ", "모델 지식 기반이므로 완료·무산된 이벤트 포함 가능. 정량 시그널로 확인되는 이벤트 우선 검증."));
+kids.push(bb("이벤트 태그 신뢰도: ", `모델 지식 기반이므로 완료·무산된 이벤트 포함 가능. P2 ${D.dart_counts["2"]}종목은 정량 시그널이 없어 종료 가능성이 높음 — 검증 전 아이디어 사이징 금지.`));
+kids.push(bb("공분산 VaR의 한계: ", "60D 창·파라메트릭. 실제 BBAS는 히스토리컬 P&L 기반이라 fat tail(±15%일)에서 차이. Cov 시트는 정적이므로 데이터 갱신 시 build_risk.py 재실행 필요. Alpha_Risk의 E[ret]은 시나리오 가정이며 백테스트 아님."));
 
 // ---------------- 8. Next steps ----------------
 kids.push(h1("8. 다음 단계 · BBAS 미팅 확인사항"));
-kids.push(bullet("CIQ 연결 Excel에서 Refresh → Tier별 평균 P/E·P/BV·ROE·ROIC·성장률 확정, 아이디어 1-9 밸류 검증."));
+kids.push(bullet(`DART_Verify P1 ${D.dart_counts["1"]}종목 먼저 검증 → 결과 입력 후 아이디어 사이징 확정. P2는 종료 여부만 확인.`));
+kids.push(bullet("Alpha_Risk 입력값(up/dn/p/기간)을 CIQ 밸류·공시 확인 후 교체. Alpha/VaR < 0.5x 아이디어는 제외 또는 축소."));
+kids.push(bullet("CIQ 연결 Excel에서 Refresh → Tier별 평균 P/E·P/BV·ROE·ROIC·성장률 확정."));
 kids.push(bullet("ADV 20% 룰: 주문 vs 보유 기준, lookback, 매수/매도 범위 확정. 보유 기준이면 다이나믹 프레임 자체가 무효 → Params 참여율·DTL 재설정."));
 kids.push(bullet("Sleeve DTL(3/5/10일)·유동 sleeve 40%·Event 합산 5-10%를 strategy-specific operating box로 제안. 3천억 미만 Event Play 허용 여부(P7)."));
 kids.push(bullet(`이벤트 태그 ${D.n_event}종목 DART 대조. 대차 가능 종목·비용 확인(아이디어 1-4, 10).`));
 kids.push(bullet("PreTrade_Check 샘플을 실제 MP로 교체 → 선물 hedge 규모, VaR 예산 대비 Gross 상한, 유동 sleeve 비중 산출."));
-kids.push(bullet("데이터 갱신: build_universe.py → build_xlsx.py → export_memo_data.py → build_docx.js (repo output/scripts)."));
+kids.push(bullet("데이터 갱신: build_universe.py → build_risk.py → build_xlsx.py → export_memo_data.py → build_docx.js (repo output/scripts)."));
 
 const doc = new Document({
   creator: "Billionfold Analyst", title: "Korea Universe under BBAS Liquidity Limits",

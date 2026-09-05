@@ -8,6 +8,10 @@ from openpyxl.formatting.rule import FormulaRule
 OUTDIR = "/tmp/claude-0/-home-user-jaypretium/06541f7f-96c0-5594-af5f-280151700bf4/scratchpad"
 u = pd.read_pickle(f"{OUTDIR}/universe.pkl")
 prefs = pd.read_pickle(f"{OUTDIR}/prefs.pkl")
+cov = pd.read_pickle(f"{OUTDIR}/cov60.pkl")
+svar = pd.read_pickle(f"{OUTDIR}/sample_var.pkl")
+irisk = pd.read_pickle(f"{OUTDIR}/ideas_risk.pkl")
+dart = pd.read_pickle(f"{OUTDIR}/dart_verify.pkl")
 ASOF = u.attrs["asof"]
 P = u.attrs["params"]
 E = 1e8
@@ -90,7 +94,10 @@ lines = [
     ("Summary: Tier·시총 구간·시장별 종목 수, 평균 지표, 밸류에이션/ROE/ROIC 평균(CIQ 갱신 후 표시)", f_norm),
     ("Universe: 유니버스 전체(A1~B). 노란 배경 = 특수상황 종목. CIQ 열은 Capital IQ Excel Plug-in 연결 시 자동 채워짐(IFERROR로 미연결 시 공란).", f_norm),
     ("Special_Situations: 이벤트 태그 또는 정량 시그널이 있는 유니버스 종목", f_norm),
-    ("PreTrade_Check: 모델 포트 입력 → 종목별 한도(6/8/10%, Short -4%)·3일 청산·Gross-cut 청산계획·VaR proxy, 포트 레벨 Net/TOP5/7% bucket 자동 점검", f_norm),
+    ("PreTrade_Check: 모델 포트 입력 → 종목별 한도·sleeve DTL·다이나믹 한도·Trim, 60D 공분산 기반 marginal/component VaR(Cov 시트), 포트 레벨 Net/TOP5/7% bucket/유동 sleeve/VaR 자동 점검", f_norm),
+    ("DART_Verify: 이벤트 태그 종목 검증 우선순위(P1-P3), 확인할 공시 유형, 검증 결과 입력란", f_norm),
+    ("Alpha_Risk: 아이디어별 expected alpha(가정 입력) vs 리스크 예산(Solo/Component VaR), 연환산 NAV 기여, Research ROI", f_norm),
+    ("Cov: 유니버스 60D 일수익률 공분산 행렬(정적) + PreTrade 가중치 행. 임의 포트의 공분산 VaR 계산에 사용", f_norm),
     ("Pref_Pairs: 우선주-보통주 괴리율 및 양 leg 유동성", f_norm),
     ("Holdco_NAV: 지주사 상장자회사 지분가치 커버리지(지분율은 입력값, 검증 필요)", f_norm),
     ("Ideas: 투자 아이디어(방향·사이징·업사이드/다운사이드 가정·리스크·반대논거)", f_norm),
@@ -131,6 +138,9 @@ params = [
     ("DTL target — Event Play sleeve (days)", P["DTL"]["event"], "제안: Event Play는 10일 + exit date 명시 (BBAS ③ 최장 40거래일)"),
     ("Liquid sleeve minimum (share of gross, DTL ≤ Core days)", 0.40, "제안: Gross-cut(30%)+Book-cut 중첩 대비 유동 sleeve 하한"),
     ("Trim trigger (DTL / target)", 2.0, "제안: DTL이 목표의 2배 초과 시 축소 검토 (10거래일 연속)"),
+    ("Reference alpha for research ROI", 0.30, "가정: 이벤트 성공 시 +30% → MaxPos × 30% = NAV 기여"),
+    ("Min NAV impact worth research (%NAV)", 0.005, "가정: 0.5%p 미만이면 리서치 ROI 낮음 (메모 7장)"),
+    ("VaR z (99%)", 2.326, "1D 99% 파라메트릭"),
 ]
 wp.cell(row=1, column=1, value="Parameters (파란색 = 입력값. 변경 시 Universe/Summary 재계산)").font = f_title
 for j, h in enumerate(["Parameter", "Value", "Source / Note"], 1):
@@ -147,6 +157,13 @@ for i, (k, v, note) in enumerate(params, 4):
 setw(wp, [40, 18, 90])
 PB1, PB2, PPART, PDAYS, PSTRESS, PPOS = "Params!$B$4", "Params!$B$5", "Params!$B$6", "Params!$B$7", "Params!$B$8", "Params!$B$9"
 PDA, PDE, PLIQ, PTRIM, PMIN = "Params!$B$21", "Params!$B$22", "Params!$B$23", "Params!$B$24", "Params!$B$15"
+PALPHA, PMINNAV, PZ = "Params!$B$25", "Params!$B$26", "Params!$B$27"
+ccodes = list(cov.index); NC = len(ccodes)
+CFIRST, CLAST = L(3), L(3 + NC - 1)
+CROWL, CROWF = 4, 4 + NC - 1
+COV_MAT = f"Cov!${CFIRST}${CROWL}:${CLAST}${CROWF}"
+COV_CODES = f"Cov!$A${CROWL}:$A${CROWF}"
+COV_W = f"Cov!${CFIRST}$2:${CLAST}$2"
 
 # ======================= Universe =======================
 wu = wb.create_sheet("Universe")
@@ -167,10 +184,10 @@ cols = [
     ("Daily turnover", "Turnover_daily", "0.00%"), ("Vol 60D ann.", "Vol60_ann", PCT), ("±15% days 40D", "Vol15_40D", NUM0), ("Short cap", "Short_Cap", PCT),
     ("Ret 1M", "Ret_1M", PCT), ("Ret 3M", "Ret_3M", PCT), ("Ret 6M", "Ret_6M", PCT), ("Ret YTD", "Ret_YTD", PCT), ("Ret 12M", "Ret_12M", PCT),
     ("% from 52wH", "Pct_from_52wH", PCT), ("Vol spike 20D/120D", "VolSpike", MULT),
-    ("ADV20 12M trough (억)", "ADV20_min12M", NUM1), ("ADV stability (trough/current)", "ADV_Stability", "0.00x"), ("1D 99% VaR proxy", "VaR99_1D", PCT),
+    ("ADV20 12M trough (억)", "ADV20_min12M", NUM1), ("ADV stability (trough/current)", "ADV_Stability", "0.00x"), ("1D 99% VaR proxy", "VaR99_1D", PCT), ("Cov flag", "Cov_flag", None),
 ]
 hdr = [c[0] for c in cols]
-formula_cols = ["MaxPos 3D-exit (억)", "MaxPos %NAV Book1", "MaxPos %NAV Book2", "DTL 6% Book1 (days)", "DTL 6% Book2 (days)", "DTL 2% Book1 (days)", "Stress MaxPos %NAV Book1", "Stress DTL 6% Book1", "Trough MaxPos %NAV Book1", "Trough MaxPos %NAV Book2", "MaxPos Alpha(5d) %NAV Book1", "MaxPos Alpha(5d) %NAV Book2", "MaxPos Event(10d) %NAV Book1", "MaxPos Event(10d) %NAV Book2", "Trough MaxPos Alpha(5d) %NAV Book1", "DTL 1% Book1 (days)"]
+formula_cols = ["MaxPos 3D-exit (억)", "MaxPos %NAV Book1", "MaxPos %NAV Book2", "DTL 6% Book1 (days)", "DTL 6% Book2 (days)", "DTL 2% Book1 (days)", "Stress MaxPos %NAV Book1", "Stress DTL 6% Book1", "Trough MaxPos %NAV Book1", "Trough MaxPos %NAV Book2", "MaxPos Alpha(5d) %NAV Book1", "MaxPos Alpha(5d) %NAV Book2", "MaxPos Event(10d) %NAV Book1", "MaxPos Event(10d) %NAV Book2", "Trough MaxPos Alpha(5d) %NAV Book1", "DTL 1% Book1 (days)", "NAV impact @ref alpha (MaxPos Alpha×α)", "Standalone VaR at MaxPos Alpha", "Research ROI flag"]
 ciq_cols = [("P/E LTM", "IQ_PE_EXCL"), ("P/E NTM", "IQ_PE_EXCL_FWD_CIQ"), ("P/BV", "IQ_PBV"), ("TEV/EBITDA LTM", "IQ_TEV_EBITDA"),
             ("ROE %", "IQ_RETURN_EQUITY"), ("ROIC % (Return on Capital)", "IQ_RETURN_CAPITAL"), ("Rev growth 1Y %", "IQ_TOTAL_REV_1YR_ANN_GROWTH"),
             ("EPS growth 1Y %", "IQ_EPS_1YR_ANN_GROWTH"), ("Div yield %", "IQ_DIVIDEND_YIELD"), ("Net debt (억)", "IQ_NET_DEBT")]
@@ -214,6 +231,9 @@ for i, (_, r) in enumerate(U.iterrows()):
         (f"=MIN(Params!$B$10,{PPART}*{PDE}*{adv}/{PB2})", PCT),
         (f"=IFERROR(MIN({PPOS},{PPART}*{PDA}*${colmap['ADV20 12M trough (억)']}{row}/{PB1}),\"n/a\")", PCT),
         (f"=IF({adv}>0,{PMIN}*{PB1}/({PPART}*{adv}),\"n/a\")", NUM1),
+        (f"=${colmap['MaxPos Alpha(5d) %NAV Book1']}{row}*{PALPHA}", "0.00%"),
+        (f"=IFERROR(${colmap['MaxPos Alpha(5d) %NAV Book1']}{row}*${colmap['1D 99% VaR proxy']}{row},\"\")", "0.00%"),
+        (f"=IF(${colmap['NAV impact @ref alpha (MaxPos Alpha×α)']}{row}<{PMINNAV},\"Low\",\"OK\")", "General"),
     ]
     for k, (f, fmt) in enumerate(fx):
         c = wu.cell(row=row, column=len(cols) + 1 + k, value=f); c.font = f_green; c.number_format = fmt
@@ -479,7 +499,7 @@ wi.freeze_panes = "C4"
 wt = wb.create_sheet("PreTrade_Check", 3)
 wt.cell(row=1, column=1, value="Pre-trade BBAS compliance check — 파란색 입력(Code / Side / Weight %NAV / Sleeve: C=Core·Hedge 3일, A=Alpha 5일, E=Event Play 승인 10일·한도 10%). 다이나믹 한도 = min(룰 한도, 참여율×sleeve DTL×ADV/Book). 샘플 포트는 Ideas 기반 예시이며 Net 한도 위반을 의도적으로 남겨둠(K200 선물 -10% hedge 시 해소).").font = f_bold
 wt.cell(row=2, column=1, value="Book = Params B4 (억원). 룰 한도: 일반 ±6%, 시총 1-2위 Long 8%, Event Play 10%, ±15%일 2회+ Short -4%. Liquidity OK = DTL ≤ sleeve 목표일수. Trim = DTL > 목표×Params B24. VaR proxy = 2.33 × 60D 일변동성 (상관 미반영).").font = Font(name=FONT, size=8, italic=True)
-th = ["Code", "Side (L/S)", "Weight %NAV", "Sleeve (C/A/E)", "Name", "Tier", "Mcap Bucket", "ADV min (억)", "±15% days", "1D VaR proxy", "Position (억)", "Limit %NAV", "Limit OK", "Sleeve exit capacity (억)", "DTL (days)", "Liquidity OK (DTL ≤ sleeve target)", "Trough DTL (days)", "VaR contrib (|w|×VaR)", "Long w", "Short w", "Top5 Long", "Top5 Short", "Gross-cut day-1 sell (억)", "Day-1 % of ADV", "Participation OK", "Sleeve DTL target", "Dynamic limit %NAV (min(rule, liquidity))", "Dynamic OK", "Trim trigger (DTL > target×k)"]
+th = ["Code", "Side (L/S)", "Weight %NAV", "Sleeve (C/A/E)", "Name", "Tier", "Mcap Bucket", "ADV min (억)", "±15% days", "1D VaR proxy", "Position (억)", "Limit %NAV", "Limit OK", "Sleeve exit capacity (억)", "DTL (days)", "Liquidity OK (DTL ≤ sleeve target)", "Trough DTL (days)", "VaR contrib (|w|×VaR)", "Long w", "Short w", "Top5 Long", "Top5 Short", "Gross-cut day-1 sell (억)", "Day-1 % of ADV", "Participation OK", "Sleeve DTL target", "Dynamic limit %NAV (min(rule, liquidity))", "Dynamic OK", "Trim trigger (DTL > target×k)", "(Σw)i (cov·w)", "Marginal VaR (cov)", "Component VaR (cov)", "% of portfolio VaR", "Standalone − Component (hedge benefit)"]
 TR = 4
 for j, h in enumerate(th, 1):
     wt.cell(row=TR, column=j, value=h)
@@ -490,6 +510,8 @@ sample = [("009155", "L", 0.06, "A"), ("009150", "S", -0.04, "C"), ("005387", "L
           ("026960", "L", 0.01, "E"), ("012630", "L", 0.01, "E")]
 NROWS = 40
 r1, rN = TR + 1, TR + NROWS
+pr = rN + 2
+pr_var = pr + 20   # row of "Portfolio sigma (cov)" in the checks table (index 19 below +1)
 UA = f"Universe!$A${r0}:$A${LAST}"
 def ucol(h):
     return f"Universe!${colmap[h]}${r0}:${colmap[h]}${LAST}"
@@ -523,11 +545,15 @@ for i in range(NROWS):
         (f'=IF(OR({C}="",NOT(ISNUMBER($H{row}))),"",MIN($L{row},{PPART}*$Z{row}*$H{row}/{PB1}))', PCT),
         (f'=IF($AA{row}="","",IF(ABS({C})<=$AA{row}+1E-9,"OK","OVER"))', "General"),
         (f'=IF(OR({C}="",NOT(ISNUMBER($O{row}))),"",IF($O{row}>$Z{row}*{PTRIM},"TRIM","-"))', "General"),
+        (f'=IF({C}="","",IFERROR(SUMPRODUCT(INDEX({COV_MAT},MATCH({A},{COV_CODES},0),0),{COV_W}),"n/a"))', "0.000000"),
+        (f'=IF(OR($AD{row}="",NOT(ISNUMBER($AD{row}))),"",IF($B${pr_var}>0,{PZ}*$AD{row}/$B${pr_var},0))', PCT),
+        (f'=IF(OR($AE{row}="",NOT(ISNUMBER($AE{row}))),"",{C}*$AE{row})', "0.00%"),
+        (f'=IF(OR($AF{row}="",NOT(ISNUMBER($AF{row}))),"",IF($B${pr_var+1}<>0,$AF{row}/ABS($B${pr_var+1}),0))', PCT),
+        (f'=IF(OR($AF{row}="",NOT(ISNUMBER($AF{row}))),"",$R{row}-$AF{row})', "0.00%"),
     ]
     for k, (f, fmt) in enumerate(fx, 5):
         c = wt.cell(row=row, column=k, value=f); c.font = f_norm; c.border = border; c.number_format = fmt
 # portfolio-level checks
-pr = rN + 2
 wt.cell(row=pr, column=1, value="Portfolio-level checks").font = f_bold
 checks = [
     ("Gross exposure", f"=SUMPRODUCT(ABS($C${r1}:$C${rN}))", "PM-specific Gross Cap (BBAS 확인)", "", "0%"),
@@ -549,6 +575,11 @@ checks = [
     ("Portfolio 1D 99% VaR — undiversified (Σ|w|×VaR)", f"=-SUM($R${r1}:$R${rN})", "vs limit", f"={VARL}", PCT),
     ("Portfolio 1D 99% VaR — zero-correlation (√Σ(w×VaR)²)", f"=-SQRT(SUMPRODUCT($R${r1}:$R${rN},$R${r1}:$R${rN}))", "vs limit (실제는 두 값 사이; pair는 상관 높아 zero-corr 쪽에 가까움)", f"={VARL}", PCT),
     ("Gross-cut scenario: total to sell over 3 days (억)", f"=B{pr+1}*{PB1}*{GC}", "1일 최소 1/3, TOP5는 2/3", f"=B{pr+19}/3", NUM1),
+    ("Portfolio sigma (daily, 60D cov)", f"=SQRT(MAX(0,SUMPRODUCT(N(+$C${r1}:$C${rN}),N(+$AD${r1}:$AD${rN}))))", "w'Σw ^0.5 (Cov 시트)", "", "0.000%"),
+    ("Portfolio 1D 99% VaR — covariance-based (Σ component)", f"=-{PZ}*B{pr+20}", "vs limit — pair hedge 반영. 실제 BBAS는 60D 히스토리컬 P&L 기준", f"={VARL}", PCT),
+    ("VaR OK (cov-based)", f'=IF(B{pr+21}>=D{pr+21},"OK","BREACH — Gross 축소 또는 hedge 강화")', "", "", "General"),
+    ("Diversification benefit (standalone sum − cov VaR)", f"=-B{pr+17}-(-B{pr+21})", "hedge/분산 효과", "", PCT),
+    ("Gross allowed at VaR limit (linear scale)", f'=IF(B{pr+21}<>0,B{pr+1}*D{pr+21}/B{pr+21},"n/a")', "현재 구조 유지 시 -1% 한도에 맞는 Gross", "", "0%"),
 ]
 for j, h in enumerate(["Check", "Value", "Rule", "Limit", ""], 1):
     wt.cell(row=pr + 0, column=j + 0, value=h if j > 1 else "Portfolio-level checks")
@@ -561,12 +592,90 @@ for i, (k, f, rule, lim, fmt) in enumerate(checks, pr + 1):
 wt.conditional_formatting.add(f"M{r1}:M{rN}", FormulaRule(formula=[f'M{r1}="BREACH"'], fill=PatternFill("solid", fgColor="F8CBAD")))
 wt.conditional_formatting.add(f"P{r1}:P{rN}", FormulaRule(formula=[f'P{r1}="SLOW"'], fill=PatternFill("solid", fgColor="F8CBAD")))
 wt.conditional_formatting.add(f"Y{r1}:Y{rN}", FormulaRule(formula=[f'Y{r1}="EXCEEDS"'], fill=PatternFill("solid", fgColor="F8CBAD")))
-wt.conditional_formatting.add(f"B{pr+1}:B{pr+19}", FormulaRule(formula=[f'ISNUMBER(SEARCH("BREACH",B{pr+1}))'], fill=PatternFill("solid", fgColor="F8CBAD")))
+wt.conditional_formatting.add(f"B{pr+1}:B{pr+24}", FormulaRule(formula=[f'ISNUMBER(SEARCH("BREACH",B{pr+1}))'], fill=PatternFill("solid", fgColor="F8CBAD")))
 wt.conditional_formatting.add(f"AB{r1}:AB{rN}", FormulaRule(formula=[f'AB{r1}="OVER"'], fill=PatternFill("solid", fgColor="F8CBAD")))
 wt.conditional_formatting.add(f"AC{r1}:AC{rN}", FormulaRule(formula=[f'AC{r1}="TRIM"'], fill=PatternFill("solid", fgColor="FFE699")))
-setw(wt, [9, 8, 9, 8, 16, 20, 13, 10, 8, 9, 10, 9, 9, 11, 8, 10, 9, 11, 8, 8, 9, 9, 12, 10, 11, 8, 12, 9, 10])
+setw(wt, [9, 8, 9, 8, 16, 20, 13, 10, 8, 9, 10, 9, 9, 11, 8, 10, 9, 11, 8, 8, 9, 9, 12, 10, 11, 8, 12, 9, 10, 11, 11, 11, 10, 12])
 wt.freeze_panes = f"E{r1}"
 wt.row_dimensions[TR].height = 40
+
+
+# ======================= Cov (60D daily covariance, universe order) =======================
+wcv = wb.create_sheet("Cov")
+wcv.cell(row=1, column=1, value=f"60D daily return covariance (BBAS 3M window), {NC} universe names, as of {ASOF}. Row 2 = portfolio weights pulled from PreTrade_Check (SUMIFS). Static values; rebuild with build_risk.py. obs<40 names: diag = median var, off-diag 0.").font = f_bold
+wcv.cell(row=3, column=1, value="Code").font = f_hdr; wcv.cell(row=3, column=2, value="Name").font = f_hdr
+wcv.cell(row=2, column=2, value="Weight (from PreTrade) →").font = f_bold
+nm = u.set_index("Code").Name
+for j, c in enumerate(ccodes):
+    col = 3 + j
+    wcv.cell(row=3, column=col, value=c).font = f_bold
+for i, c in enumerate(ccodes):
+    row = 4 + i
+    wcv.cell(row=row, column=1, value=c).font = f_norm; wcv.cell(row=row, column=2, value=nm.get(c, "")).font = f_norm
+    vals = cov.values[i]
+    for j in range(NC):
+        wcv.cell(row=row, column=3 + j, value=float(vals[j]))
+CFIRST, CLAST = L(3), L(3 + NC - 1)
+CROWL, CROWF = 4, 4 + NC - 1
+COV_MAT = f"Cov!${CFIRST}${CROWL}:${CLAST}${CROWF}"
+COV_CODES = f"Cov!$A${CROWL}:$A${CROWF}"
+COV_W = f"Cov!${CFIRST}$2:${CLAST}$2"
+for j, c in enumerate(ccodes):
+    cell = wcv.cell(row=2, column=3 + j, value=f'=SUMIFS(PreTrade_Check!$C${r1}:$C${rN},PreTrade_Check!$A${r1}:$A${rN},{L(3+j)}$3)')
+    cell.number_format = PCT; cell.font = f_green
+wcv.freeze_panes = "C4"
+wcv.column_dimensions["A"].width = 9; wcv.column_dimensions["B"].width = 14
+
+# ======================= DART_Verify =======================
+wd = wb.create_sheet("DART_Verify", 3)
+wd.cell(row=1, column=1, value=f"DART 검증 우선순위 — 이벤트 태그 {len(dart)}종목 (모델 지식 기반, 완료/무산 이벤트 혼재 가능). P1 = 아이디어 사용 또는 (actionable 이벤트 + 정량 시그널 확인) / P2 = actionable이나 정량 시그널 없음(종료 가능성) / P3 = 구조적·반복 테마(최근 공시만 확인). 노란 열은 검증 결과 입력.").font = f_bold
+dh = ["Priority", "Code", "Name", "Tier", "Event Type", "Event Note (K)", "Corroborating signals (data)", "Idea #", "DART filing to check", "Flag", "Mcap (억)", "ADV20 (억)", "MaxPos Alpha@500억", "Verify status (input)", "Verified date (input)", "Outcome / next event (input)"]
+for j, h in enumerate(dh, 1):
+    wd.cell(row=3, column=j, value=h)
+style_header(wd, 3, len(dh))
+for i, (_, r) in enumerate(dart.iterrows(), 4):
+    vals = [int(r.Priority), r.Code, r.Name, r.Tier, r.Event_Type, r.Event_Note, r.Signals, r.Idea, r.Filing, r.Flag, float(r.Mcap), float(r.ADV20), float(r.MaxPos), "", "", ""]
+    for j, v in enumerate(vals, 1):
+        c = wd.cell(row=i, column=j, value=v); c.font = f_norm; c.border = border; c.alignment = Alignment(wrap_text=True, vertical="top")
+        if j == 11: c.number_format = NUM0
+        if j == 12: c.number_format = NUM1
+        if j == 13: c.number_format = PCT
+        if j >= 14: c.fill = fill_yel; c.font = f_blue
+wd.conditional_formatting.add(f"A4:A{3+len(dart)}", FormulaRule(formula=["A4=1"], fill=PatternFill("solid", fgColor="F8CBAD")))
+wd.conditional_formatting.add(f"A4:A{3+len(dart)}", FormulaRule(formula=["A4=2"], fill=PatternFill("solid", fgColor="FFE699")))
+setw(wd, [8, 8, 16, 6, 13, 44, 26, 7, 34, 34, 10, 9, 10, 14, 12, 26])
+wd.freeze_panes = "D4"; wd.auto_filter.ref = f"A3:{L(len(dh))}{3+len(dart)}"
+wd.row_dimensions[3].height = 36
+
+# ======================= Alpha_Risk =======================
+wa = wb.create_sheet("Alpha_Risk", 4)
+wa.cell(row=1, column=1, value="Expected alpha vs risk budget — 아이디어별. 파란색 = 가정 입력(upside/downside/확률/기간). Risk = 60D 공분산 기반(Cov 시트): Solo VaR = 아이디어 단독 포트 VaR, Component VaR = 샘플 포트 내 기여분. Alpha/VaR = 연환산 NAV 기여 ÷ VaR.").font = f_bold
+ah = ["#", "Idea", "Sleeve", "Notional (long-leg %NAV)", "Gross %NAV", "Upside (input)", "Downside (input)", "P(upside) (input)", "Horizon (m, input)", "E[ret] on notional", "NAV contribution", "NAV contribution p.a.", "Standalone VaR sum", "Solo VaR (cov)", "Component VaR in sample port", "Hedge benefit (standalone − solo)", "Alpha p.a. / Solo VaR", "Alpha p.a. / Component VaR", "Research ROI (NAV p.a. ≥ Params min?)"]
+for j, h in enumerate(ah, 1):
+    wa.cell(row=3, column=j, value=h)
+style_header(wa, 3, len(ah))
+for i, (_, r) in enumerate(irisk.iterrows(), 4):
+    vals = [int(r.n), r.idea, r.sleeve, float(r.notional), float(r.gross), float(r.up), float(r.dn), float(r.p), int(r.hz)]
+    for j, v in enumerate(vals, 1):
+        c = wa.cell(row=i, column=j, value=v); c.font = f_norm; c.border = border
+        if j in (4, 5): c.number_format = PCT
+        if j in (6, 7, 8): c.number_format = PCT; c.font = f_blue; c.fill = fill_yel
+        if j == 9: c.font = f_blue; c.fill = fill_yel
+    fx = [(f"=H{i}*F{i}+(1-H{i})*G{i}", PCT), (f"=D{i}*J{i}", "0.00%"), (f"=K{i}*12/I{i}", "0.00%"),
+          (float(r.standalone), "0.00%"), (float(r.solo_var), "0.00%"), (float(r.comp), "0.00%"), (f"=M{i}-N{i}", "0.00%"),
+          (f'=IF(N{i}>0,L{i}/N{i},"n/a")', "0.00x"), (f'=IF(O{i}>0.0001,L{i}/O{i},"n/a (hedge)")', "0.00x"), (f'=IF(L{i}>={PMINNAV},"OK","Low")', "General")]
+    for k, (f, fmt) in enumerate(fx, 10):
+        c = wa.cell(row=i, column=k, value=f); c.font = f_norm; c.border = border; c.number_format = fmt
+ar = 4 + len(irisk) + 2
+wa.cell(row=ar, column=1, value="해석").font = f_bold
+notes = ["E[ret]은 upside/downside 시나리오 가정의 확률가중 평균이며 모델링 값이 아님. 입력을 바꾸면 ROI 열이 재계산됨.",
+         "Solo VaR = 아이디어 leg만으로 구성한 포트의 1D 99% VaR (60D 공분산). Pair의 hedge benefit = Standalone 합 − Solo VaR.",
+         "Component VaR가 ≈0 또는 음수면 해당 아이디어가 샘플 포트에서 hedge 역할(리스크 소비 없음). obs<40 종목(신규상장)은 공분산 불안정 → Universe 시트 Cov flag 참조.",
+         "Research ROI: 연환산 NAV 기여가 Params B26(0.5%p) 미만이면 Low. 1% 포지션 아이디어는 사실상 모두 Low → Event sleeve에서만, 리서치 시간 최소화."]
+for k, t in enumerate(notes, 1):
+    wa.cell(row=ar + k, column=1, value=t).font = f_norm
+setw(wa, [4, 30, 7, 12, 9, 9, 9, 9, 9, 10, 10, 10, 10, 10, 12, 12, 11, 12, 14])
+wa.freeze_panes = "C4"; wa.row_dimensions[3].height = 48
 
 # ======================= Excluded =======================
 we = wb.create_sheet("Excluded")

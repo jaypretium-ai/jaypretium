@@ -66,6 +66,20 @@ vals = {}
 for r in ws.iter_rows(min_row=46, max_row=70, values_only=True):
     if r[0] and r[1] is not None: vals[r[0]] = r[1]
 d["pt"] = {k: (float(v) if isinstance(v, (int, float)) else v) for k, v in vals.items()}
+rs = json.load(open(f"{OUT}/risk_stats.json"))
+d["risk"] = rs
+sv = pd.read_pickle(f"{OUT}/sample_var.pkl").sort_values("Component VaR", ascending=False)
+d["comp_top"] = [[r.Name, pc(r.w), pcu(r["Standalone VaR"]), pcu(r["Marginal VaR"]), pcu(r["Component VaR"]), pc(r["% of total"])] for _, r in sv.head(6).iterrows()]
+d["comp_bottom"] = [[r.Name, pc(r.w), pcu(r["Standalone VaR"]), pcu(r["Marginal VaR"]), pcu(r["Component VaR"]), pc(r["% of total"])] for _, r in sv.tail(4).iterrows()]
+ir = pd.read_pickle(f"{OUT}/ideas_risk.pkl")
+d["ideas_risk"] = [[int(r.n), r.idea, pcu(r.notional), pc(r.up), pc(r.dn), f"{r.p:.0%}", f"{r.hz:.0f}m", pc(r.er), pcu(r.nav_ann), pcu(r.solo_var), pcu(r.comp), (f"{r.alpha_per_var:.2f}x" if pd.notna(r.alpha_per_var) else "n/a"), ("OK" if r.nav_ann >= 0.005 else "Low")] for _, r in ir.iterrows()]
+d["n_ideas_lowroi"] = int((ir.nav_ann < 0.005).sum())
+dv = pd.read_pickle(f"{OUT}/dart_verify.pkl")
+d["dart_p1"] = [[r.Name, r.Event_Type, r.Signals, r.Idea, r.Filing] for _, r in dv[dv.Priority == 1].iterrows()]
+d["dart_counts"] = {int(k): int(v) for k, v in dv.Priority.value_counts().items()}
+prio = dv.set_index("Code").Priority
+d["special_event"] = [[r.Name, r.Code, r.Tier.split(" ")[0], r.Event_Type, r.Event_Note, f0(r.Mcap / E), f0(r.ADV20 / E), pc(r.Ret_YTD), pcu(r.MaxPos_500_alpha), f"P{int(prio.get(r.Code, 3))}"] for _, r in S.iterrows()]
+d["n_lowroi_univ"] = int((U.MaxPos_500_alpha * 0.30 < 0.005).sum())
 json.dump(d, open(f"{OUT}/memo_data.json", "w"), ensure_ascii=False, indent=1)
 print({k: v for k, v in d.items() if isinstance(v, (int, float, str)) and not k.startswith("nm_")})
 print(d["pt"])
