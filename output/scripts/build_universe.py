@@ -21,7 +21,8 @@ EVENT_LIMIT = 0.10 # BBAS ③ Event Play
 MCAP_MIN = 3000 * EOK   # BBAS ⑥ 3천억 미만 편입 불가
 MCAP_MID = 7000 * EOK   # BBAS ⑥ 3천억~7천억 합산 7%
 BOOKS = {"500": 500 * EOK, "1000": 1000 * EOK}
-MIN_ALPHA_POS = 0.02    # minimum meaningful position (assumption) for B / A3 tiers
+MIN_ALPHA_POS = 0.01    # minimum meaningful position (PM 확인: 1%까지 사이징 가능)
+DTL = {"core": 3, "alpha": 5, "event": 10}   # sleeve별 청산 목표일수 (Core = Gross-cut 3일 / Alpha 5일 / Event Play 10일)
 
 df = pd.concat([pd.read_parquet(f"{MARCAP_DIR}/marcap-2025.parquet"),
                 pd.read_parquet(f"{MARCAP_DIR}/marcap-2026.parquet")])
@@ -130,6 +131,11 @@ for k, book in BOOKS.items():
     u[f"DTL6_{k}"] = POS_LIMIT * book / (PART * u["ADV_min"])
     u[f"DTL2_{k}"] = MIN_ALPHA_POS * book / (PART * u["ADV_min"])
 
+for sl, d_ in DTL.items():
+    for k, book in BOOKS.items():
+        u[f"MaxPos_{k}_{sl}"] = np.minimum(POS_LIMIT if sl != "event" else EVENT_LIMIT, PART * d_ * u["ADV_min"] / book)
+        u[f"MaxPos_{k}_{sl}_Trough"] = np.minimum(POS_LIMIT if sl != "event" else EVENT_LIMIT, PART * d_ * u["ADV20_min12M"] / book)
+
 def bucket(x):
     if x < MCAP_MIN:
         return "C <3000억"
@@ -155,25 +161,24 @@ def excl_reason(r):
 u["Excl_Reason"] = u.apply(excl_reason, axis=1)
 
 def tier(r):
+    """Liquidity class at Book1(500억), Alpha sleeve standard (DTL 5d, 20% participation)."""
     if r["Excl_Reason"] in ("KONEX", "SPAC", "관리/투자주의환기", "거래정지"):
         return "X Excluded"
     if r["Mcap_1M"] < MCAP_MIN:
-        return "C Event-Play only (<3000억)"
-    liq500, liq1000 = r["MaxPosPct_500"], r["MaxPosPct_1000"]
-    if r["Mcap_1M"] >= MCAP_MID:
-        if liq1000 >= POS_LIMIT - 1e-9:
-            return "A1 Core Liquid"
-        if liq500 >= POS_LIMIT - 1e-9:
-            return "A2 Core Liquid (500억 book)"
-        if liq500 >= MIN_ALPHA_POS:
-            return "A3 Large-cap Illiquid"
-        return "C Event-Play only (illiquid)"
-    if liq500 >= MIN_ALPHA_POS:
-        return "B Mid-cap Alpha (7% bucket)"
-    return "C Event-Play only (illiquid)"
+        return "C <3000억 (BBAS ⑥ 편입불가)"
+    a, e = r["MaxPos_500_alpha"], r["MaxPos_500_event"]
+    if a >= POS_LIMIT - 1e-9:
+        return "L1 Full size (6% @5d)"
+    if a >= 0.03:
+        return "L2 Mid size (3-6% @5d)"
+    if a >= MIN_ALPHA_POS:
+        return "L3 Small size (1-3% @5d)"
+    if e >= MIN_ALPHA_POS:
+        return "L4 Event-only (≥1% @10d)"
+    return "X Illiquid (<1% @10d)"
 
 u["Tier"] = u.apply(tier, axis=1)
-u["In_Universe"] = u["Tier"].str.match(r"^(A1|A2|A3|B)")
+u["In_Universe"] = u["Tier"].str.match(r"^L[1-4]")
 u["Short_Cap"] = np.where(u["Vol15_40D"] >= 2, -0.04, -0.06)
 
 # ---------------- special-situation flags (data-driven) ----------------
@@ -282,7 +287,7 @@ u["Ticker_BBG"] = u.apply(lambda r: f"{r['Code']} {'KQ' if r['Market'].startswit
 u["Ticker_CIQ"] = u.apply(lambda r: f"{'KOSDAQ' if r['Market'].startswith('KOSDAQ') else 'KOSE'}:A{r['Code']}", axis=1)
 u.attrs["asof"] = str(asof.date())
 u.attrs["params"] = dict(PART=PART, DAYS=DAYS, STRESS=STRESS, POS_LIMIT=POS_LIMIT, EVENT_LIMIT=EVENT_LIMIT,
-                        MCAP_MIN=MCAP_MIN, MCAP_MID=MCAP_MID, MIN_ALPHA_POS=MIN_ALPHA_POS)
+                        MCAP_MIN=MCAP_MIN, MCAP_MID=MCAP_MID, MIN_ALPHA_POS=MIN_ALPHA_POS, DTL=DTL)
 u.to_pickle(f"{OUTDIR}/universe.pkl")
 
 # ---------------- pref pairs ----------------

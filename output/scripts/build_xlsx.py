@@ -77,12 +77,13 @@ lines = [
     ("참고: 최근 40거래일 ±15% 일변동 2회 이상 → Short 편입비 -4% 제한 (Short_Cap 열)", f_norm),
     ("", f_norm),
     ("3. Tier 정의", f_bold),
-    ("A1 Core Liquid: 1개월 평균 시총 ≥ 7,000억 & 1,000억 Book 기준 6% 포지션(60억)을 3일 내 청산 가능 (ADV_min ≥ 100억)", f_norm),
-    ("A2 Core Liquid (500억 book): 시총 ≥ 7,000억 & 500억 Book 기준 6%(30억) 3일 내 청산 가능 (ADV_min 50~100억)", f_norm),
-    ("A3 Large-cap Illiquid: 시총 ≥ 7,000억 & 500억 Book 기준 2~6% 포지션만 가능 (ADV_min 16.7~50억)", f_norm),
-    ("B Mid-cap Alpha: 시총 3,000~7,000억 & 500억 Book 기준 ≥2% 포지션 가능. 합산 7% bucket 적용", f_norm),
-    ("C Event-Play only: 시총 < 3,000억 또는 ADV 부족 → 사전승인 Event Play(10%, 40거래일)로만 편입 가능", f_norm),
-    ("X Excluded: KONEX / SPAC / 관리·투자주의환기 / 거래정지", f_norm),
+    ("유니버스 = 1개월 평균 시총 ≥ 3,000억 & 제외종목 아님 & Event sleeve(10일) 기준 1% 이상 사이징 가능. ADV는 유니버스 필터가 아니라 사이징 변수(다이나믹): MaxPos = min(한도, 참여율 × sleeve DTL × ADV / Book)", f_norm),
+    ("Sleeve별 청산 목표일수(DTL): Core/Hedge 3일(Gross-cut 대응, 한도 6%) / Alpha 5일(한도 6%) / Event Play 10일(사전승인, 한도 10%, exit date 명시)", f_norm),
+    ("L1 Full size: 500억 Book·Alpha sleeve(5일) 기준 6% 가능 (ADV_min ≥ 30억)", f_norm),
+    ("L2 Mid size: 3~6% (ADV_min 15~30억) / L3 Small size: 1~3% (ADV_min 5~15억)", f_norm),
+    ("L4 Event-only: Alpha 기준 1% 미만이나 Event sleeve(10일) 기준 1% 이상 (ADV_min 2.5~5억)", f_norm),
+    ("X Illiquid: 10일 기준으로도 1% 미만 (ADV_min < 2.5억) / X Excluded: KONEX·SPAC·관리·거래정지 / C: 시총 3,000억 미만(BBAS ⑥)", f_norm),
+    ("포트 레벨 유동성 룰(제안): DTL ≤ 3일 포지션 합계 ≥ Gross의 40% → Gross-cut·Book-cut을 유동 sleeve에서 소화. Trim 트리거: DTL이 목표의 2배를 10거래일 연속 초과 시 축소", f_norm),
     ("", f_norm),
     ("4. 시트 구성", f_bold),
     ("Params: 파란색 입력값(Book size, 참여율, 청산일수, Stress haircut, 편입비 한도). 변경 시 Universe의 MaxPos/DTL 열과 Summary가 재계산됨.", f_norm),
@@ -120,12 +121,16 @@ params = [
     ("Top-5 aggregate limit", 0.25, "BBAS ⑤: Long/Short 각 TOP5 합산 25%"),
     ("Min market cap (억원)", P["MCAP_MIN"] / E, "BBAS ⑥: 3천억 미만 편입 불가"),
     ("Mid-cap upper bound (억원)", P["MCAP_MID"] / E, "BBAS ⑥"),
-    ("Min meaningful alpha position (%NAV)", P["MIN_ALPHA_POS"], "가정: 2% 미만이면 alpha 기여 미미 → Tier A3/B 하한"),
+    ("Min position size (%NAV)", P["MIN_ALPHA_POS"], "PM 확인: 1%까지 사이징 가능 → 유니버스 하한"),
     ("Net exposure limit", "Min(Gross x 10%, 15%)", "BBAS ⑦: Min(Gross×10%, 15%) — 참고용 텍스트"),
     ("Gross-cut scenario", 0.30, "BBAS ③-1: 5D VaR 2회 이탈 시 Gross 30% cut (2/4/6VAR 단계는 20%). PreTrade_Check 청산계획에 사용"),
     ("Top-2 market cap code #1", "005930", "BBAS ④: 시총 1-2위 Long 8% 한도 대상"),
     ("Top-2 market cap code #2", "000660", "BBAS ④"),
     ("1D 99% VaR limit (abs)", -0.01, "BBAS ②-1: Max(매니저 VaR, -1.0%) — 신설 펀드는 -1.0% 고정"),
+    ("DTL target — Alpha sleeve (days)", P["DTL"]["alpha"], "제안: alpha 종목은 5일 내 전량 청산 가능 사이즈"),
+    ("DTL target — Event Play sleeve (days)", P["DTL"]["event"], "제안: Event Play는 10일 + exit date 명시 (BBAS ③ 최장 40거래일)"),
+    ("Liquid sleeve minimum (share of gross, DTL ≤ Core days)", 0.40, "제안: Gross-cut(30%)+Book-cut 중첩 대비 유동 sleeve 하한"),
+    ("Trim trigger (DTL / target)", 2.0, "제안: DTL이 목표의 2배 초과 시 축소 검토 (10거래일 연속)"),
 ]
 wp.cell(row=1, column=1, value="Parameters (파란색 = 입력값. 변경 시 Universe/Summary 재계산)").font = f_title
 for j, h in enumerate(["Parameter", "Value", "Source / Note"], 1):
@@ -141,11 +146,12 @@ for i, (k, v, note) in enumerate(params, 4):
     wp.cell(row=i, column=3, value=note).font = f_norm
 setw(wp, [40, 18, 90])
 PB1, PB2, PPART, PDAYS, PSTRESS, PPOS = "Params!$B$4", "Params!$B$5", "Params!$B$6", "Params!$B$7", "Params!$B$8", "Params!$B$9"
+PDA, PDE, PLIQ, PTRIM, PMIN = "Params!$B$21", "Params!$B$22", "Params!$B$23", "Params!$B$24", "Params!$B$15"
 
 # ======================= Universe =======================
 wu = wb.create_sheet("Universe")
 U = u[u["In_Universe"]].copy()
-tier_order = {"A1 Core Liquid": 0, "A2 Core Liquid (500억 book)": 1, "A3 Large-cap Illiquid": 2, "B Mid-cap Alpha (7% bucket)": 3}
+tier_order = {"L1 Full size (6% @5d)": 0, "L2 Mid size (3-6% @5d)": 1, "L3 Small size (1-3% @5d)": 2, "L4 Event-only (≥1% @10d)": 3}
 U["_t"] = U["Tier"].map(tier_order)
 U = U.sort_values(["_t", "Mcap"], ascending=[True, False])
 strong = U["Recent_Halt"] | (U["ShareJump_250D"] >= 1) | U["New_Listing"] | (U["VolSpike"] >= 2.5) | (U["Ret_1M"] >= 0.5) | (U["Ret_1M"] <= -0.3) | (U["Event_Type"] != "") | U["Is_Pref"]
@@ -164,13 +170,13 @@ cols = [
     ("ADV20 12M trough (억)", "ADV20_min12M", NUM1), ("ADV stability (trough/current)", "ADV_Stability", "0.00x"), ("1D 99% VaR proxy", "VaR99_1D", PCT),
 ]
 hdr = [c[0] for c in cols]
-formula_cols = ["MaxPos 3D-exit (억)", "MaxPos %NAV Book1", "MaxPos %NAV Book2", "DTL 6% Book1 (days)", "DTL 6% Book2 (days)", "DTL 2% Book1 (days)", "Stress MaxPos %NAV Book1", "Stress DTL 6% Book1", "Trough MaxPos %NAV Book1", "Trough MaxPos %NAV Book2"]
+formula_cols = ["MaxPos 3D-exit (억)", "MaxPos %NAV Book1", "MaxPos %NAV Book2", "DTL 6% Book1 (days)", "DTL 6% Book2 (days)", "DTL 2% Book1 (days)", "Stress MaxPos %NAV Book1", "Stress DTL 6% Book1", "Trough MaxPos %NAV Book1", "Trough MaxPos %NAV Book2", "MaxPos Alpha(5d) %NAV Book1", "MaxPos Alpha(5d) %NAV Book2", "MaxPos Event(10d) %NAV Book1", "MaxPos Event(10d) %NAV Book2", "Trough MaxPos Alpha(5d) %NAV Book1", "DTL 1% Book1 (days)"]
 ciq_cols = [("P/E LTM", "IQ_PE_EXCL"), ("P/E NTM", "IQ_PE_EXCL_FWD_CIQ"), ("P/BV", "IQ_PBV"), ("TEV/EBITDA LTM", "IQ_TEV_EBITDA"),
             ("ROE %", "IQ_RETURN_EQUITY"), ("ROIC % (Return on Capital)", "IQ_RETURN_CAPITAL"), ("Rev growth 1Y %", "IQ_TOTAL_REV_1YR_ANN_GROWTH"),
             ("EPS growth 1Y %", "IQ_EPS_1YR_ANN_GROWTH"), ("Div yield %", "IQ_DIVIDEND_YIELD"), ("Net debt (억)", "IQ_NET_DEBT")]
 all_hdr = hdr + formula_cols + [c[0] for c in ciq_cols]
 HR = 3
-wu.cell(row=1, column=1, value=f"Universe — {len(U)} names (as of {ASOF}). 노란 배경 = Special Situation. 검정 = 데이터, 파란 = 입력, 초록 = Params 참조 수식, CIQ 열 = Capital IQ plug-in 연결 시 자동").font = f_bold
+wu.cell(row=1, column=1, value=f"Universe — {len(U)} names (as of {ASOF}; 시총≥3,000억, Event sleeve 기준 1%+ 사이징 가능). Tier = 500억 Book·Alpha sleeve(5일) 기준 최대 사이즈. 노란 배경 = Special Situation. 초록 = Params 참조 수식(다이나믹 사이징), CIQ 열 = Capital IQ plug-in 연결 시 자동").font = f_bold
 for j, h in enumerate(all_hdr, 1):
     wu.cell(row=HR, column=j, value=h)
 style_header(wu, HR, len(all_hdr))
@@ -202,6 +208,12 @@ for i, (_, r) in enumerate(U.iterrows()):
         (f"=IF({adv}>0,{PPOS}*{PB1}/({PPART}*{adv}*{PSTRESS}),\"n/a\")", NUM1),
         (f"=IFERROR(MIN({PPOS},{PPART}*{PDAYS}*${colmap['ADV20 12M trough (억)']}{row}/{PB1}),\"n/a\")", PCT),
         (f"=IFERROR(MIN({PPOS},{PPART}*{PDAYS}*${colmap['ADV20 12M trough (억)']}{row}/{PB2}),\"n/a\")", PCT),
+        (f"=MIN({PPOS},{PPART}*{PDA}*{adv}/{PB1})", PCT),
+        (f"=MIN({PPOS},{PPART}*{PDA}*{adv}/{PB2})", PCT),
+        (f"=MIN(Params!$B$10,{PPART}*{PDE}*{adv}/{PB1})", PCT),
+        (f"=MIN(Params!$B$10,{PPART}*{PDE}*{adv}/{PB2})", PCT),
+        (f"=IFERROR(MIN({PPOS},{PPART}*{PDA}*${colmap['ADV20 12M trough (억)']}{row}/{PB1}),\"n/a\")", PCT),
+        (f"=IF({adv}>0,{PMIN}*{PB1}/({PPART}*{adv}),\"n/a\")", NUM1),
     ]
     for k, (f, fmt) in enumerate(fx):
         c = wu.cell(row=row, column=len(cols) + 1 + k, value=f); c.font = f_green; c.number_format = fmt
@@ -229,8 +241,8 @@ UR = f"Universe!${{c}}${r0}:${{c}}${LAST}"
 def rng(h):
     return UR.format(c=colmap[h])
 tiers = list(tier_order.keys())
-hdrs = ["Tier", "# names", "% of universe", "Avg Mcap (억)", "Avg ADV20 (억)", "Avg daily turnover", "Avg Vol 60D", "Avg Ret YTD", "Avg Ret 1M", "# Special Sit",
-        "# 6% OK @Book1", "# 6% OK @Book2", "Avg P/E LTM", "Avg P/BV", "Avg TEV/EBITDA", "Avg ROE %", "Avg ROIC %", "Avg Rev g %", "Avg EPS g %", "Avg Div yld %"]
+hdrs = ["Tier (Alpha 5d @Book1)", "# names", "% of universe", "Avg Mcap (억)", "Avg ADV20 (억)", "Avg daily turnover", "Avg Vol 60D", "Avg Ret YTD", "Avg Ret 1M", "# Special Sit",
+        "# 6% OK Core(3d) @Book1", "# 6% OK Alpha(5d) @Book1", "# 6% OK Alpha(5d) @Book2", "Avg P/E LTM", "Avg P/BV", "Avg TEV/EBITDA", "Avg ROE %", "Avg ROIC %", "Avg Rev g %", "Avg EPS g %", "Avg Div yld %"]
 R = 4
 for j, h in enumerate(hdrs, 1):
     wsu.cell(row=R, column=j, value=h)
@@ -250,16 +262,17 @@ for i, t in enumerate(tiers + ["TOTAL"], R + 1):
         avgifs("Vol 60D ann.", crit_rng, crit), avgifs("Ret YTD", crit_rng, crit), avgifs("Ret 1M", crit_rng, crit),
         f'=COUNTIFS({crit_rng},{crit},{rng("Special Sit")},"Y")',
         f'=COUNTIFS({crit_rng},{crit},{rng("MaxPos %NAV Book1")},">="&{PPOS})',
-        f'=COUNTIFS({crit_rng},{crit},{rng("MaxPos %NAV Book2")},">="&{PPOS})',
+        f'=COUNTIFS({crit_rng},{crit},{rng("MaxPos Alpha(5d) %NAV Book1")},">="&{PPOS})',
+        f'=COUNTIFS({crit_rng},{crit},{rng("MaxPos Alpha(5d) %NAV Book2")},">="&{PPOS})',
         avgifs("P/E LTM", crit_rng, crit), avgifs("P/BV", crit_rng, crit), avgifs("TEV/EBITDA LTM", crit_rng, crit), avgifs("ROE %", crit_rng, crit),
         avgifs("ROIC % (Return on Capital)", crit_rng, crit), avgifs("Rev growth 1Y %", crit_rng, crit), avgifs("EPS growth 1Y %", crit_rng, crit), avgifs("Div yield %", crit_rng, crit),
     ]
-    fmts = [NUM0, PCT, NUM0, NUM1, "0.00%", PCT, PCT, PCT, NUM0, NUM0, NUM0, MULT, MULT, MULT, NUM1, NUM1, NUM1, NUM1, NUM1]
+    fmts = [NUM0, PCT, NUM0, NUM1, "0.00%", PCT, PCT, PCT, NUM0, NUM0, NUM0, NUM0, MULT, MULT, MULT, NUM1, NUM1, NUM1, NUM1, NUM1]
     for j, (f, fm) in enumerate(zip(fx, fmts), 2):
         c = wsu.cell(row=i, column=j, value=f); c.font = f_norm; c.number_format = fm; c.border = border
 R2 = R + len(tiers) + 4
 wsu.cell(row=R2 - 1, column=1, value="By market-cap bucket (1M avg) — 전체 상장종목 기준 (Universe 밖 포함)").font = f_bold
-for j, h in enumerate(["Bucket", "# all listed", "# in Universe", "# Event-Play only", "# Excluded (KONEX/SPAC/관리/정지)"], 1):
+for j, h in enumerate(["Bucket", "# all listed", "# in Universe", "# <3000억 (BBAS ⑥)", "# Excluded (KONEX/SPAC/관리/정지/illiquid)"], 1):
     wsu.cell(row=R2, column=j, value=h)
 style_header(wsu, R2, 5)
 allc = u.groupby("Mcap_Bucket").size(); inu = u[u.In_Universe].groupby("Mcap_Bucket").size(); evc = u[u.Tier.str.startswith("C")].groupby("Mcap_Bucket").size(); exc = u[u.Tier.str.startswith("X")].groupby("Mcap_Bucket").size()
@@ -290,7 +303,13 @@ cap = [
     ("6% position (억원)", f"={PPOS}*{PB1}", f"={PPOS}*{PB2}"),
     ("Required ADV for 3-day exit (억원)", f"={PPOS}*{PB1}/({PPART}*{PDAYS})", f"={PPOS}*{PB2}/({PPART}*{PDAYS})"),
     ("# names allowing full 6% in 3 days", f'=COUNTIFS({rng("MaxPos %NAV Book1")},">="&{PPOS})', f'=COUNTIFS({rng("MaxPos %NAV Book2")},">="&{PPOS})'),
-    ("# names allowing ≥2% in 3 days", f'=COUNTIFS({rng("MaxPos %NAV Book1")},">="&Params!$B$15)', f'=COUNTIFS({rng("MaxPos %NAV Book2")},">="&Params!$B$15)'),
+    ("# names allowing ≥ min position (1%) in 3 days", f'=COUNTIFS({rng("MaxPos %NAV Book1")},">="&{PMIN})', f'=COUNTIFS({rng("MaxPos %NAV Book2")},">="&{PMIN})'),
+    ("# names full 6% — Alpha sleeve (5 days)", f'=COUNTIFS({rng("MaxPos Alpha(5d) %NAV Book1")},">="&{PPOS})', f'=COUNTIFS({rng("MaxPos Alpha(5d) %NAV Book2")},">="&{PPOS})'),
+    ("# names ≥ 3% — Alpha sleeve (5 days)", f'=COUNTIFS({rng("MaxPos Alpha(5d) %NAV Book1")},">=0.03")', f'=COUNTIFS({rng("MaxPos Alpha(5d) %NAV Book2")},">=0.03")'),
+    ("# names ≥ 1% — Alpha sleeve (5 days)", f'=COUNTIFS({rng("MaxPos Alpha(5d) %NAV Book1")},">="&{PMIN})', f'=COUNTIFS({rng("MaxPos Alpha(5d) %NAV Book2")},">="&{PMIN})'),
+    ("# names ≥ 1% — Event sleeve (10 days)", f'=COUNTIFS({rng("MaxPos Event(10d) %NAV Book1")},">="&{PMIN})', f'=COUNTIFS({rng("MaxPos Event(10d) %NAV Book2")},">="&{PMIN})'),
+    ("# names full 6% — Alpha sleeve at 12M trough ADV", f'=COUNTIFS({rng("Trough MaxPos Alpha(5d) %NAV Book1")},">="&{PPOS})', ""),
+    ("Sum of MaxPos Alpha(5d) %NAV (gross capacity)", f'=SUM({rng("MaxPos Alpha(5d) %NAV Book1")})', f'=SUM({rng("MaxPos Alpha(5d) %NAV Book2")})'),
     ("# names full 6% under stress ADV (Params haircut)", f'=COUNTIFS({rng("Stress MaxPos %NAV Book1")},">="&{PPOS})', ""),
     ("# names full 6% at 12M trough ADV (empirical)", f'=COUNTIFS({rng("Trough MaxPos %NAV Book1")},">="&{PPOS})', f'=COUNTIFS({rng("Trough MaxPos %NAV Book2")},">="&{PPOS})'),
     ("Median ADV stability (12M trough / current)", f'=MEDIAN({rng("ADV stability (trough/current)")})', ""),
@@ -302,9 +321,11 @@ for i, (k, a, b) in enumerate(cap, R4 + 1):
         c = wsu.cell(row=i, column=j, value=v); c.font = f_norm; c.border = border; c.number_format = NUM0 if "%" not in k else PCT
     if "Sum of" in k:
         for j in (2, 3): wsu.cell(row=i, column=j).number_format = "0%"
+    if "Alpha sleeve" in k and "Sum" not in k:
+        for j in (2, 3): wsu.cell(row=i, column=j).number_format = NUM0
     if "Median ADV" in k:
         wsu.cell(row=i, column=2).number_format = "0.00x"
-setw(wsu, [34, 11, 12, 13, 13, 13, 11, 11, 11, 11, 12, 12, 11, 10, 12, 10, 10, 10, 10, 10])
+setw(wsu, [40, 11, 12, 13, 13, 13, 11, 11, 11, 11, 12, 12, 12, 11, 10, 12, 10, 10, 10, 10, 10])
 wsu.row_dimensions[R].height = 40
 
 # ======================= Special_Situations =======================
@@ -315,10 +336,10 @@ S = S.sort_values(["_e", "_t", "Mcap"], ascending=[True, True, False])
 sd = pd.DataFrame({
     "Code": S["Code"], "Name": S["Name"], "Market": S["Market"], "Tier": S["Tier"], "Event Type (K)": S["Event_Type"], "Event Note (K, verify)": S["Event_Note"],
     "Quant Flags (data)": S["Quant_Flags"], "Mcap (억)": S["Mcap"] / E, "ADV20 (억)": S["ADV20"] / E, "MaxPos %NAV @500억": S["MaxPosPct_500"], "MaxPos %NAV @1000억": S["MaxPosPct_1000"],
-    "DTL 6% @500억 (d)": S["DTL6_500"], "Short cap": S["Short_Cap"], "Ret 1M": S["Ret_1M"], "Ret YTD": S["Ret_YTD"], "% from 52wH": S["Pct_from_52wH"], "Vol spike": S["VolSpike"], "±15% days 40D": S["Vol15_40D"],
+    "DTL 6% @500억 (d)": S["DTL6_500"], "MaxPos Alpha(5d) @500억": S["MaxPos_500_alpha"], "Short cap": S["Short_Cap"], "Ret 1M": S["Ret_1M"], "Ret YTD": S["Ret_YTD"], "% from 52wH": S["Pct_from_52wH"], "Vol spike": S["VolSpike"], "±15% days 40D": S["Vol15_40D"],
 })
 wss.cell(row=1, column=1, value=f"Special Situations in Universe — {len(sd)} names ({(S['Event_Type']!='').sum()} with event tag, rest = quant signal only). Event tag = 모델 지식(검증 필요), Quant = 데이터.").font = f_bold
-write_df(wss, sd, 3, fmts={"Mcap (억)": NUM0, "ADV20 (억)": NUM1, "MaxPos %NAV @500억": PCT, "MaxPos %NAV @1000억": PCT, "DTL 6% @500억 (d)": NUM1, "Short cap": PCT, "Ret 1M": PCT, "Ret YTD": PCT, "% from 52wH": PCT, "Vol spike": MULT, "±15% days 40D": NUM0})
+write_df(wss, sd, 3, fmts={"Mcap (억)": NUM0, "ADV20 (억)": NUM1, "MaxPos %NAV @500억": PCT, "MaxPos %NAV @1000억": PCT, "DTL 6% @500억 (d)": NUM1, "MaxPos Alpha(5d) @500억": PCT, "Short cap": PCT, "Ret 1M": PCT, "Ret YTD": PCT, "% from 52wH": PCT, "Vol spike": MULT, "±15% days 40D": NUM0})
 setw(wss, [8, 18, 9, 22, 14, 50, 40, 10, 10, 10, 10, 10, 8, 8, 8, 9, 8, 8])
 wss.freeze_panes = "C4"; wss.auto_filter.ref = f"A3:{L(len(sd.columns))}{3+len(sd)}"
 wss.row_dimensions[3].height = 36
@@ -456,16 +477,17 @@ wi.freeze_panes = "C4"
 
 # ======================= PreTrade_Check =======================
 wt = wb.create_sheet("PreTrade_Check", 3)
-wt.cell(row=1, column=1, value="Pre-trade BBAS compliance check — 파란색 입력(Code / Side / Weight %NAV / Event Play 승인). 샘플 포트는 Ideas 기반 예시이며 Net 한도 위반을 의도적으로 남겨둠(K200 선물 -10% hedge 시 해소). Universe 시트에 없는 코드는 n/a.").font = f_bold
-wt.cell(row=2, column=1, value="Book = Params B4 (억원). 한도: 일반 ±6%, 시총 1-2위 Long 8%, Event Play 승인 시 10%, ±15%일 2회+ Short -4%. 3일 청산 = Params 참여율 × 일수 × ADV_min. VaR proxy = 2.33 × 60D 일변동성 (상관 미반영).").font = Font(name=FONT, size=8, italic=True)
-th = ["Code", "Side (L/S)", "Weight %NAV", "Event Play (Y)", "Name", "Tier", "Mcap Bucket", "ADV min (억)", "±15% days", "1D VaR proxy", "Position (억)", "Limit %NAV", "Limit OK", "3D-exit capacity (억)", "DTL (days)", "Liquidity OK", "Trough DTL (days)", "VaR contrib (|w|×VaR)", "Long w", "Short w", "Top5 Long", "Top5 Short", "Gross-cut day-1 sell (억)", "Day-1 % of ADV", "Participation OK"]
+wt.cell(row=1, column=1, value="Pre-trade BBAS compliance check — 파란색 입력(Code / Side / Weight %NAV / Sleeve: C=Core·Hedge 3일, A=Alpha 5일, E=Event Play 승인 10일·한도 10%). 다이나믹 한도 = min(룰 한도, 참여율×sleeve DTL×ADV/Book). 샘플 포트는 Ideas 기반 예시이며 Net 한도 위반을 의도적으로 남겨둠(K200 선물 -10% hedge 시 해소).").font = f_bold
+wt.cell(row=2, column=1, value="Book = Params B4 (억원). 룰 한도: 일반 ±6%, 시총 1-2위 Long 8%, Event Play 10%, ±15%일 2회+ Short -4%. Liquidity OK = DTL ≤ sleeve 목표일수. Trim = DTL > 목표×Params B24. VaR proxy = 2.33 × 60D 일변동성 (상관 미반영).").font = Font(name=FONT, size=8, italic=True)
+th = ["Code", "Side (L/S)", "Weight %NAV", "Sleeve (C/A/E)", "Name", "Tier", "Mcap Bucket", "ADV min (억)", "±15% days", "1D VaR proxy", "Position (억)", "Limit %NAV", "Limit OK", "Sleeve exit capacity (억)", "DTL (days)", "Liquidity OK (DTL ≤ sleeve target)", "Trough DTL (days)", "VaR contrib (|w|×VaR)", "Long w", "Short w", "Top5 Long", "Top5 Short", "Gross-cut day-1 sell (억)", "Day-1 % of ADV", "Participation OK", "Sleeve DTL target", "Dynamic limit %NAV (min(rule, liquidity))", "Dynamic OK", "Trim trigger (DTL > target×k)"]
 TR = 4
 for j, h in enumerate(th, 1):
     wt.cell(row=TR, column=j, value=h)
 style_header(wt, TR, len(th))
-sample = [("009155", "L", 0.06, ""), ("009150", "S", -0.04, ""), ("005387", "L", 0.05, ""), ("005380", "S", -0.05, ""), ("402340", "L", 0.04, ""), ("000660", "S", -0.04, ""),
-          ("028260", "L", 0.04, ""), ("005930", "S", -0.02, ""), ("207940", "S", -0.02, ""), ("0126Z0", "L", 0.03, ""), ("267270", "L", 0.03, ""), ("000150", "L", 0.02, ""),
-          ("003550", "L", 0.02, ""), ("034730", "L", 0.02, ""), ("105560", "L", 0.02, ""), ("0220W0", "L", 0.02, "Y"), ("089860", "L", 0.02, ""), ("002990", "S", -0.02, ""), ("006340", "S", -0.02, ""), ("241560", "L", 0.02, "")]
+sample = [("009155", "L", 0.06, "A"), ("009150", "S", -0.04, "C"), ("005387", "L", 0.05, "A"), ("005380", "S", -0.05, "C"), ("402340", "L", 0.04, "C"), ("000660", "S", -0.04, "C"),
+          ("028260", "L", 0.04, "C"), ("005930", "S", -0.02, "C"), ("207940", "S", -0.02, "C"), ("0126Z0", "L", 0.03, "A"), ("267270", "L", 0.03, "A"), ("000150", "L", 0.02, "A"),
+          ("003550", "L", 0.02, "A"), ("034730", "L", 0.02, "C"), ("105560", "L", 0.02, "C"), ("0220W0", "L", 0.02, "E"), ("089860", "L", 0.02, "E"), ("002990", "S", -0.02, "A"), ("006340", "S", -0.02, "A"), ("241560", "L", 0.02, "A"),
+          ("026960", "L", 0.01, "E"), ("012630", "L", 0.01, "E")]
 NROWS = 40
 r1, rN = TR + 1, TR + NROWS
 UA = f"Universe!$A${r0}:$A${LAST}"
@@ -484,11 +506,11 @@ for i in range(NROWS):
     fx = [
         (look("Name"), "General"), (look("Tier"), "General"), (look("Mcap Bucket"), "General"), (look("ADV min (억)"), NUM1), (look("±15% days 40D"), NUM0), (look("1D 99% VaR proxy"), PCT),
         (f'=IF({C}="","",ABS({C})*{PB1})', NUM1),
-        (f'=IF({C}="","",IF({Dd}="Y",Params!$B$10,IF({B}="L",IF(OR({A}={T1},{A}={T2}),0.08,{PPOS}),IF(N($I{row})>=2,0.04,{PPOS}))))', PCT),
+        (f'=IF({C}="","",IF({Dd}="E",Params!$B$10,IF({B}="L",IF(OR({A}={T1},{A}={T2}),0.08,{PPOS}),IF(N($I{row})>=2,0.04,{PPOS}))))', PCT),
         (f'=IF({C}="","",IF(ABS({C})<=$L{row}+1E-9,"OK","BREACH"))', "General"),
-        (f'=IF(OR({C}="",NOT(ISNUMBER($H{row}))),"",{PPART}*{PDAYS}*$H{row})', NUM1),
+        (f'=IF(OR({C}="",NOT(ISNUMBER($H{row}))),"",{PPART}*$Z{row}*$H{row})', NUM1),
         (f'=IF(OR({C}="",NOT(ISNUMBER($H{row}))),"",IF($H{row}>0,$K{row}/({PPART}*$H{row}),"n/a"))', NUM1),
-        (f'=IF($O{row}="","",IF(AND(ISNUMBER($O{row}),$O{row}<={PDAYS}),"OK","SLOW"))', "General"),
+        (f'=IF($O{row}="","",IF(AND(ISNUMBER($O{row}),$O{row}<=$Z{row}+1E-9),"OK","SLOW"))', "General"),
         (f'=IF(OR({C}="",NOT(ISNUMBER($H{row}))),"",IFERROR($K{row}/({PPART}*INDEX({ucol("ADV20 12M trough (억)")},{m})),"n/a"))', NUM1),
         (f'=IF(OR({C}="",NOT(ISNUMBER($J{row}))),"",ABS({C})*$J{row})', PCT),
         (f'=IF({C}="","",MAX({C},0))', PCT), (f'=IF({C}="","",MAX(-{C},0))', PCT),
@@ -497,6 +519,10 @@ for i in range(NROWS):
         (f'=IF({C}="","",$K{row}*{GC}*IF(OR($U{row}>0,$V{row}>0),2/3,1)/{PDAYS})', NUM1),
         (f'=IF(OR({C}="",NOT(ISNUMBER($H{row}))),"",IF($H{row}>0,$W{row}/$H{row},"n/a"))', PCT),
         (f'=IF($X{row}="","",IF(AND(ISNUMBER($X{row}),$X{row}<={PPART}+1E-9),"OK","EXCEEDS"))', "General"),
+        (f'=IF({C}="","",IF({Dd}="E",{PDE},IF({Dd}="A",{PDA},{PDAYS})))', NUM0),
+        (f'=IF(OR({C}="",NOT(ISNUMBER($H{row}))),"",MIN($L{row},{PPART}*$Z{row}*$H{row}/{PB1}))', PCT),
+        (f'=IF($AA{row}="","",IF(ABS({C})<=$AA{row}+1E-9,"OK","OVER"))', "General"),
+        (f'=IF(OR({C}="",NOT(ISNUMBER($O{row}))),"",IF($O{row}>$Z{row}*{PTRIM},"TRIM","-"))', "General"),
     ]
     for k, (f, fmt) in enumerate(fx, 5):
         c = wt.cell(row=row, column=k, value=f); c.font = f_norm; c.border = border; c.number_format = fmt
@@ -510,16 +536,19 @@ checks = [
     ("Long TOP5 sum", f"=SUM($U${r1}:$U${rN})", "≤ 25%", 0.25, PCT),
     ("Short TOP5 sum", f"=SUM($V${r1}:$V${rN})", "≤ 25%", 0.25, PCT),
     ("TOP5 OK", f'=IF(AND(B{pr+4}<=D{pr+4}+1E-9,B{pr+5}<=D{pr+5}+1E-9),"OK","BREACH")', "", "", "General"),
-    ("Mid-cap (3000-7000억) aggregate |w|", f'=SUMPRODUCT(($G${r1}:$G${rN}="B 3000-7000억")*($D${r1}:$D${rN}<>"Y")*ABS(N(+$C${r1}:$C${rN})))', "≤ 7% (Event Play 승인 제외)", "=Params!$B$11", PCT),
+    ("Mid-cap (3000-7000억) aggregate |w|", f'=SUMPRODUCT(($G${r1}:$G${rN}="B 3000-7000억")*($D${r1}:$D${rN}<>"E")*ABS(N(+$C${r1}:$C${rN})))', "≤ 7% (Event Play 승인 제외)", "=Params!$B$11", PCT),
     ("Mid-cap OK", f'=IF(B{pr+7}<=D{pr+7}+1E-9,"OK","BREACH")', "", "", "General"),
-    ("Sub-3000억 / non-universe |w| (승인 없이)", f'=SUMPRODUCT((LEFT($F${r1}:$F${rN},1)="C")*($D${r1}:$D${rN}<>"Y")*ABS(N(+$C${r1}:$C${rN})))+SUMPRODUCT(($F${r1}:$F${rN}="n/a")*($D${r1}:$D${rN}<>"Y")*ABS(N(+$C${r1}:$C${rN})))', "0 (BBAS ⑥)", 0, PCT),
-    ("Event Play aggregate |w| (승인분)", f'=SUMPRODUCT(($D${r1}:$D${rN}="Y")*ABS(N(+$C${r1}:$C${rN})))', "제안 bucket 5-10% (미팅 확정)", 0.10, PCT),
+    ("Sub-3000억 / non-universe |w| (승인 없이)", f'=SUMPRODUCT((LEFT($F${r1}:$F${rN},1)="C")*($D${r1}:$D${rN}<>"E")*ABS(N(+$C${r1}:$C${rN})))+SUMPRODUCT(($F${r1}:$F${rN}="n/a")*($D${r1}:$D${rN}<>"E")*ABS(N(+$C${r1}:$C${rN})))', "0 (BBAS ⑥)", 0, PCT),
+    ("Event Play aggregate |w| (sleeve E)", f'=SUMPRODUCT(($D${r1}:$D${rN}="E")*ABS(N(+$C${r1}:$C${rN})))', "제안 bucket 5-10% (미팅 확정)", 0.10, PCT),
+    ("Liquid sleeve share of gross (DTL ≤ Core days)", f'=IFERROR(SUMPRODUCT(ISNUMBER($O${r1}:$O${rN})*(N(+$O${r1}:$O${rN})<={PDAYS})*ABS(N(+$C${r1}:$C${rN})))/B{pr+1},"n/a")', "≥ 40% (제안)", f"={PLIQ}", PCT),
+    ("# names over dynamic limit", f'=COUNTIF($AB${r1}:$AB${rN},"OVER")', "0", 0, NUM0),
+    ("# names on trim trigger", f'=COUNTIF($AC${r1}:$AC${rN},"TRIM")', "모니터링", 0, NUM0),
     ("# single-name limit breaches", f'=COUNTIF($M${r1}:$M${rN},"BREACH")', "0", 0, NUM0),
     ("# names not exitable in 3 days", f'=COUNTIF($P${r1}:$P${rN},"SLOW")', "0 (또는 liquid hedge로 상쇄)", 0, NUM0),
     ("# names exceeding day-1 participation in gross-cut", f'=COUNTIF($Y${r1}:$Y${rN},"EXCEEDS")', "0", 0, NUM0),
     ("Portfolio 1D 99% VaR — undiversified (Σ|w|×VaR)", f"=-SUM($R${r1}:$R${rN})", "vs limit", f"={VARL}", PCT),
     ("Portfolio 1D 99% VaR — zero-correlation (√Σ(w×VaR)²)", f"=-SQRT(SUMPRODUCT($R${r1}:$R${rN},$R${r1}:$R${rN}))", "vs limit (실제는 두 값 사이; pair는 상관 높아 zero-corr 쪽에 가까움)", f"={VARL}", PCT),
-    ("Gross-cut scenario: total to sell over 3 days (억)", f"=B{pr+1}*{PB1}*{GC}", "1일 최소 1/3, TOP5는 2/3", f"=B{pr+16}/3", NUM1),
+    ("Gross-cut scenario: total to sell over 3 days (억)", f"=B{pr+1}*{PB1}*{GC}", "1일 최소 1/3, TOP5는 2/3", f"=B{pr+19}/3", NUM1),
 ]
 for j, h in enumerate(["Check", "Value", "Rule", "Limit", ""], 1):
     wt.cell(row=pr + 0, column=j + 0, value=h if j > 1 else "Portfolio-level checks")
@@ -532,8 +561,10 @@ for i, (k, f, rule, lim, fmt) in enumerate(checks, pr + 1):
 wt.conditional_formatting.add(f"M{r1}:M{rN}", FormulaRule(formula=[f'M{r1}="BREACH"'], fill=PatternFill("solid", fgColor="F8CBAD")))
 wt.conditional_formatting.add(f"P{r1}:P{rN}", FormulaRule(formula=[f'P{r1}="SLOW"'], fill=PatternFill("solid", fgColor="F8CBAD")))
 wt.conditional_formatting.add(f"Y{r1}:Y{rN}", FormulaRule(formula=[f'Y{r1}="EXCEEDS"'], fill=PatternFill("solid", fgColor="F8CBAD")))
-wt.conditional_formatting.add(f"B{pr+1}:B{pr+16}", FormulaRule(formula=[f'ISNUMBER(SEARCH("BREACH",B{pr+1}))'], fill=PatternFill("solid", fgColor="F8CBAD")))
-setw(wt, [9, 8, 9, 8, 16, 20, 13, 10, 8, 9, 10, 9, 9, 11, 8, 10, 9, 11, 8, 8, 9, 9, 12, 10, 11])
+wt.conditional_formatting.add(f"B{pr+1}:B{pr+19}", FormulaRule(formula=[f'ISNUMBER(SEARCH("BREACH",B{pr+1}))'], fill=PatternFill("solid", fgColor="F8CBAD")))
+wt.conditional_formatting.add(f"AB{r1}:AB{rN}", FormulaRule(formula=[f'AB{r1}="OVER"'], fill=PatternFill("solid", fgColor="F8CBAD")))
+wt.conditional_formatting.add(f"AC{r1}:AC{rN}", FormulaRule(formula=[f'AC{r1}="TRIM"'], fill=PatternFill("solid", fgColor="FFE699")))
+setw(wt, [9, 8, 9, 8, 16, 20, 13, 10, 8, 9, 10, 9, 9, 11, 8, 10, 9, 11, 8, 8, 9, 9, 12, 10, 11, 8, 12, 9, 10])
 wt.freeze_panes = f"E{r1}"
 wt.row_dimensions[TR].height = 40
 
@@ -555,19 +586,19 @@ style_header(we, r, 2); r += 1
 for k, v in t2.items():
     we.cell(row=r, column=1, value=k).font = f_norm; c = we.cell(row=r, column=2, value=int(v)); c.font = f_norm; c.number_format = NUM0; r += 1
 r += 2
-we.cell(row=r, column=1, value="Event-Play 후보 A: 시총 < 3,000억이지만 ADV20 ≥ 30억 (유동성은 충분, BBAS ⑥로 일반 편입 불가 → 사전승인 Event Play 10%/40거래일)").font = f_bold
+we.cell(row=r, column=1, value="시총 < 3,000억이지만 ADV20 ≥ 30억 (유동성은 충분, BBAS ⑥로 편입 불가 — 3천억 미만 Event Play 허용 여부는 미팅 확인 사항 P7)").font = f_bold
 r += 1
-ca = u[(u.Tier == "C Event-Play only (<3000억)") & (u.ADV20 >= 30 * E) & (~u.Is_SPAC)].sort_values("ADV20", ascending=False).head(60)
+ca = u[(u.Tier.str.startswith("C")) & (u.ADV20 >= 30 * E) & (~u.Is_SPAC)].sort_values("ADV20", ascending=False).head(60)
 cdf = pd.DataFrame({"Code": ca.Code, "Name": ca.Name, "Market": ca.Market, "Mcap (억)": ca.Mcap / E, "ADV20 (억)": ca.ADV20 / E, "Ret YTD": ca.Ret_YTD, "Ret 1M": ca.Ret_1M, "Vol spike": ca.VolSpike, "Event Type (K)": ca.Event_Type, "Quant Flags": ca.Quant_Flags})
 r = write_df(we, cdf, r, fmts={"Mcap (억)": NUM0, "ADV20 (억)": NUM1, "Ret YTD": PCT, "Ret 1M": PCT, "Vol spike": MULT}) + 3
-we.cell(row=r, column=1, value="Event-Play 후보 B: 시총 ≥ 7,000억이지만 ADV 부족 (500억 Book 2% 포지션도 3일 청산 불가 → Event/저유동성 bucket)").font = f_bold
+we.cell(row=r, column=1, value="X Illiquid: 시총 ≥ 3,000억이지만 Event sleeve(10일) 기준으로도 1% 사이징 불가 (ADV_min < 2.5억) → 유니버스 제외").font = f_bold
 r += 1
-cb = u[(u.Tier == "C Event-Play only (illiquid)") & (u.Mcap_1M >= P["MCAP_MID"])].sort_values("Mcap", ascending=False)
+cb = u[(u.Tier == "X Illiquid (<1% @10d)")].sort_values("Mcap", ascending=False)
 cdf = pd.DataFrame({"Code": cb.Code, "Name": cb.Name, "Market": cb.Market, "Mcap (억)": cb.Mcap / E, "ADV20 (억)": cb.ADV20 / E, "MaxPos %NAV @500억": cb.MaxPosPct_500, "DTL 2% @500억 (d)": cb.DTL2_500, "Ret YTD": cb.Ret_YTD, "Event Type (K)": cb.Event_Type, "Event Note": cb.Event_Note})
 r = write_df(we, cdf, r, fmts={"Mcap (억)": NUM0, "ADV20 (억)": NUM1, "MaxPos %NAV @500억": PCT, "DTL 2% @500억 (d)": NUM1, "Ret YTD": PCT}) + 3
-we.cell(row=r, column=1, value="Event-Play 후보 C: 시총 3,000~7,000억, ADV 부족").font = f_bold
+we.cell(row=r, column=1, value="L4 Event-only: Alpha sleeve(5일) 기준 1% 미만, Event sleeve(10일) 기준 1% 이상 → 사전승인 Event Play로만 편입").font = f_bold
 r += 1
-cc = u[(u.Tier == "C Event-Play only (illiquid)") & (u.Mcap_1M < P["MCAP_MID"])].sort_values("Mcap", ascending=False)
+cc = u[(u.Tier == "L4 Event-only (≥1% @10d)")].sort_values("Mcap", ascending=False)
 cdf = pd.DataFrame({"Code": cc.Code, "Name": cc.Name, "Market": cc.Market, "Mcap (억)": cc.Mcap / E, "ADV20 (억)": cc.ADV20 / E, "MaxPos %NAV @500억": cc.MaxPosPct_500, "Ret YTD": cc.Ret_YTD, "Event Type (K)": cc.Event_Type})
 write_df(we, cdf, r, fmts={"Mcap (억)": NUM0, "ADV20 (억)": NUM1, "MaxPos %NAV @500억": PCT, "Ret YTD": PCT})
 setw(we, [40, 18, 10, 12, 12, 12, 12, 10, 16, 50])
