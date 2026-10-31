@@ -73,3 +73,24 @@ outcome:
     (2) 핵심은 operating leverage 계산: 비용 구조가 이미 바닥이라 매출 +3.4%가 EPS +85-100%로 증폭.
     (3) 배당 회복은 피치보다 느렸음 (2002 YoC 7.3% vs 피치 12.7%), 그러나 결국 2005년 12% 도달.
     (4) 최종 수익의 상당 부분은 피치에 없던 M&A 프리미엄 (2006 인수) — 썸 오브 thesis + 옵션.
+  one_liner: 규제 리셋 + 바닥 비용구조 → 요금 3.4% 인상이 EPS 2배로 증폭된 나노캡 유틸리티
+
+# 앱/책 카드용
+pitch_vs_actual:
+  - {item: 2001 EPS, pitch: "$1.75+", actual: "$1.85", verdict: hit}
+  - {item: 목표 P/E, pitch: 8.5x, actual: "~10x (2001말)", verdict: beat}
+  - {item: 2001말 가격, pitch: "$15", actual: "$18.65", verdict: beat}
+  - {item: 배당 YoC, pitch: "12.7% (2002)", actual: "7.3% (2002) / 12.1% (2005)", verdict: late}
+  - {item: M&A, pitch: 언급 없음, actual: "$35 현금 인수 (2006 발표)", verdict: bonus}
+devils_advocate:
+  - 사후 선택 편향 — 동시기 '규제 승인 후 매수' 피치 전체의 base rate 미확인
+  - 수익의 약 30-40%는 M&A 프리미엄(운). 미인수 가정 시 CAGR 약 22-25% (추정)
+  - 실제 체결가 불확실 (11/14 갭업 가능) — 단 $12.50 진입에도 CAGR 약 20%
+  - 2006-07 배당은 추정치, 2002-05 연말 주가 미확보
+timeline:
+  - {date: 2000-11-13, label: VT PSB 요금 3.42% 인상 승인}
+  - {date: 2000-11-14, label: VIC 피치 ($8.25)}
+  - {date: 2001-01-21, label: 요금인상 발효}
+  - {date: 2002-12-01, label: 배당 $0.55→$0.76 인상}
+  - {date: 2006-06-22, label: Gaz Métro(NNEEC) $35 인수 발표}
+  - {date: 2007-04-12, label: 인수 종결}

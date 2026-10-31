@@ -60,14 +60,14 @@ patterns:
 
   rerating_mix_shift:
     name: 사업 믹스 변화 / 재분류 리레이팅
-    mispricing: 과거 업종 멀티플 적용 (예: 하드웨어 → 반복매출)
+    mispricing: 과거 업종 멀티플 적용 (예 - 하드웨어 → 반복매출)
     catalyst: 세그먼트 공시 변경, 신규 사업 비중 임계치 돌파, 지수/섹터 재분류
     kill_criteria: 신사업 성장률이 기존사업 감소를 상쇄 못함
 
   structural_discount_arb:
     name: 구조적 할인 차익 (지주사 할인, 우선주/보통주 괴리, 복수 상장)
     mispricing: 유동성·의결권·이중과세 등 구조적 요인
-    catalyst: 지배구조 개편, 합병, 배당정책 (참고: ../backtest_disparity 삼성 우선주 연구)
+    catalyst: 지배구조 개편, 합병, 배당정책 (참고 - ../backtest_disparity 삼성 우선주 연구)
     kill_criteria: catalyst 없이 '할인율이 높다'만으로 진입
 
   short_fraud_decline:

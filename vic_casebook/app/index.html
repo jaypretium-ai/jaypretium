@@ -1,0 +1,253 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>VIC Casebook</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans+KR:wght@400;500;600&family=Source+Serif+4:opsz,wght@8..60,600&display=swap" rel="stylesheet">
+<style>
+/* Layout: 좌측 패턴 인덱스(고정) + 우측 패턴/케이스 뷰. 리서치 터미널 톤, 숫자는 mono. */
+:root {
+  --bg: #f4f5f7;
+  --panel: #ffffff;
+  --ink: #16202e;
+  --muted: #5d6878;
+  --line: #dde1e7;
+  --accent: #1d4ed8;
+  --good: #0f7a4a;
+  --warn: #a16207;
+  --bad: #b42318;
+  --soft: #eef2fb;
+  --f-display: "Source Serif 4", Georgia, serif;
+  --f-body: "IBM Plex Sans KR", "Apple SD Gothic Neo", "Malgun Gothic", system-ui, sans-serif;
+  --f-mono: "IBM Plex Mono", ui-monospace, Menlo, monospace;
+  color-scheme: light;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #0e131b; --panel: #151c27; --ink: #e4e8ef; --muted: #96a1b2; --line: #263142;
+    --accent: #7aa2ff; --good: #4cc38a; --warn: #e0b04a; --bad: #f07a6e; --soft: #1a2436;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #0e131b; --panel: #151c27; --ink: #e4e8ef; --muted: #96a1b2; --line: #263142;
+  --accent: #7aa2ff; --good: #4cc38a; --warn: #e0b04a; --bad: #f07a6e; --soft: #1a2436;
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+html, body { height: 100%; margin: 0; }
+body { background: var(--bg); color: var(--ink); font: 14px/1.55 var(--f-body); }
+a { color: var(--accent); }
+.app { display: grid; grid-template-columns: 260px 1fr; height: 100%; }
+nav { background: var(--panel); border-right: 1px solid var(--line); overflow-y: auto; padding: 20px 0; }
+nav .brand { padding: 0 20px 16px; border-bottom: 1px solid var(--line); margin-bottom: 8px; }
+nav .brand b { font: 600 20px var(--f-display); display: block; }
+nav .brand span { color: var(--muted); font-size: 12px; }
+nav button { all: unset; box-sizing: border-box; display: flex; justify-content: space-between; align-items: center;
+  gap: 8px; width: 100%; padding: 8px 20px; cursor: pointer; color: var(--ink); }
+nav button:hover { background: var(--soft); }
+nav button:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
+nav button[aria-current="true"] { background: var(--soft); box-shadow: inset 3px 0 var(--accent); font-weight: 600; }
+nav .cnt { font: 12px var(--f-mono); color: var(--muted); min-width: 18px; text-align: right; }
+nav .cnt.has { color: var(--accent); font-weight: 500; }
+main { overflow-y: auto; padding: 28px clamp(16px, 4vw, 48px) 64px; }
+.wrap { max-width: 980px; display: grid; gap: 20px; }
+.crumb { color: var(--muted); font-size: 12px; letter-spacing: .04em; }
+.crumb button { all: unset; cursor: pointer; color: var(--accent); }
+h1 { font: 600 30px/1.2 var(--f-display); margin: 0; text-wrap: balance; }
+h2 { font-size: 13px; font-weight: 600; letter-spacing: .06em; color: var(--muted); margin: 0 0 10px; text-transform: uppercase; }
+.panel { background: var(--panel); border: 1px solid var(--line); border-radius: 6px; padding: 18px 20px; }
+.def { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1px; background: var(--line); border: 1px solid var(--line); border-radius: 6px; overflow: hidden; }
+.def div { background: var(--panel); padding: 14px 16px; }
+.def dt { font-size: 12px; color: var(--muted); font-weight: 600; margin-bottom: 4px; }
+.def dd { margin: 0; }
+.def .kill dt { color: var(--bad); }
+.stats { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; }
+.stat { background: var(--panel); border: 1px solid var(--line); border-radius: 6px; padding: 12px 14px; }
+.stat .k { font-size: 12px; color: var(--muted); }
+.stat .v { font: 500 22px var(--f-mono); font-variant-numeric: tabular-nums; }
+.note { font-size: 12px; color: var(--warn); }
+.cards { display: grid; gap: 12px; }
+.card { all: unset; box-sizing: border-box; cursor: pointer; display: grid; grid-template-columns: 1fr auto; gap: 6px 20px;
+  background: var(--panel); border: 1px solid var(--line); border-left: 4px solid var(--good); border-radius: 6px; padding: 16px 20px; }
+.card:hover { border-color: var(--accent); border-left-color: var(--good); }
+.card:focus-visible { outline: 2px solid var(--accent); }
+.card .t { font-weight: 600; font-size: 16px; }
+.card .t small { color: var(--muted); font: 12px var(--f-mono); margin-left: 6px; }
+.card .ol { color: var(--muted); grid-column: 1; }
+.card .nums { grid-row: 1 / span 2; grid-column: 2; display: flex; gap: 20px; text-align: right; align-items: center; }
+.card .nums div { font: 500 18px var(--f-mono); font-variant-numeric: tabular-nums; }
+.card .nums span { display: block; font: 11px var(--f-body); color: var(--muted); }
+.empty { border: 1px dashed var(--line); border-radius: 6px; padding: 22px; color: var(--muted); text-align: center; }
+.chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.chip { font-size: 12px; padding: 2px 8px; border-radius: 999px; background: var(--soft); color: var(--ink); border: 1px solid var(--line); }
+.chip.long { color: var(--good); border-color: currentColor; background: transparent; }
+.kpis { display: grid; grid-template-columns: repeat(5, 1fr); gap: 12px; }
+table { width: 100%; border-collapse: collapse; font-variant-numeric: tabular-nums; }
+th, td { text-align: left; padding: 8px 10px; border-bottom: 1px solid var(--line); vertical-align: top; }
+th { font-size: 12px; color: var(--muted); font-weight: 600; }
+td.m { font-family: var(--f-mono); font-size: 13px; }
+.pill { font-size: 11px; font-weight: 600; padding: 2px 8px; border-radius: 4px; white-space: nowrap; }
+.pill.hit, .pill.beat { background: color-mix(in srgb, var(--good) 14%, transparent); color: var(--good); }
+.pill.late { background: color-mix(in srgb, var(--warn) 16%, transparent); color: var(--warn); }
+.pill.bonus { background: color-mix(in srgb, var(--accent) 14%, transparent); color: var(--accent); }
+.pill.miss { background: color-mix(in srgb, var(--bad) 14%, transparent); color: var(--bad); }
+.two { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+ul.tight { margin: 0; padding-left: 18px; display: grid; gap: 6px; }
+.devil { border-left: 4px solid var(--bad); }
+.chart svg { width: 100%; height: auto; display: block; }
+.chart text { fill: var(--muted); font: 11px var(--f-mono); }
+.chart .lbl { fill: var(--ink); font-family: var(--f-body); }
+.src { font-size: 12px; color: var(--muted); }
+@media (max-width: 820px) {
+  .app { grid-template-columns: 1fr; height: auto; }
+  nav { border-right: 0; border-bottom: 1px solid var(--line); max-height: 260px; }
+  .def, .two { grid-template-columns: 1fr; }
+  .stats, .kpis { grid-template-columns: repeat(2, 1fr); }
+  .card { grid-template-columns: 1fr; }
+  .card .nums { grid-row: auto; grid-column: 1; justify-content: flex-start; text-align: left; }
+}
+@media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
+</style>
+</head>
+<body>
+<div class="app">
+  <nav aria-label="패턴">
+    <div class="brand"><b>VIC Casebook</b><span>패턴별 케이스 스터디 · 실현 수익률 기준</span></div>
+    <div id="nav"></div>
+  </nav>
+  <main><div class="wrap" id="view"></div></main>
+</div>
+<script>
+const DATA = {"patterns": {"spinoff": {"name": "스핀오프 / 분할", "mispricing": "모회사 주주의 강제 매도(지수 제외, mandate 불일치), 애널리스트 커버리지 부재", "catalyst": "분할 완료 후 6-24M 내 독립 실적 공시, 커버리지 개시, 경영진 인센티브 정렬", "kill_criteria": "분할 후 부채를 떠안은 'dumping ground' 구조, 경영진 지분/스톡옵션 부재"}, "special_situation": {"name": "특수상황 (M&A arb, 청산, 텐더, 구조조정 후 신주)", "mispricing": "복잡성·만기 구조로 일반 투자자 회피, post-reorg 주식의 강제 매도", "catalyst": "거래 종결, 청산 배분, 텐더 실행", "kill_criteria": "규제/파이낸싱 리스크로 deal break 시 downside 가 upside 의 3x 이상"}, "hidden_assets": {"name": "숨은 자산 / SOTP", "mispricing": "부동산·지분·NOL 등 비영업자산이 실적 기반 멀티플에 반영 안 됨", "catalyst": "자산 매각, 분리 상장, 공시 세분화, 행동주의", "kill_criteria": "경영진이 자산 현금화 의지 없음 (value trap 최다 유형)"}, "quality_compounder": {"name": "퀄리티 컴파운더 (적정가 매수)", "mispricing": "단기 실적 노이즈·일회성 이슈로 장기 ROIC 대비 저평가", "catalyst": "시간 (재투자 runway). 명시적 catalyst 불필요", "kill_criteria": "ROIC 하락 추세, 재투자 기회 소진, 해자 침식"}, "turnaround": {"name": "턴어라운드 / 운영 개선", "mispricing": "과거 실적 기반 extrapolation, 신규 경영진 효과 미반영", "catalyst": "마진 회복 가시화, 비핵심 사업 정리", "kill_criteria": "유동성 리스크(만기 24M 내 refinancing 불확실)"}, "capital_allocation": {"name": "자본배분 변화 (자사주 cannibal, 배당정책 전환)", "mispricing": "FCF 대비 주주환원 여력 과소평가", "catalyst": "대규모 자사주 소각, 배당 상향, 레버리지 재조정", "kill_criteria": "고평가 구간 자사주 매입, 경영진 보상과 EPS 연동 왜곡"}, "activist_governance": {"name": "행동주의 / 지배구조 개선", "mispricing": "지배구조 디스카운트 (오너 리스크, 저배당, 비효율 자본)", "catalyst": "행동주의 지분 공시, 이사회 교체, 정책/제도 변화", "kill_criteria": "지배주주 지분 > 50% + 소수주주 보호 장치 부재"}, "deep_value": {"name": "딥밸류 / 순자산 할인 (net-net 등)", "mispricing": "비인기·소형·유동성 부족, 실적 악화 공포", "catalyst": "대부분 없음 → 분산(basket) 전제. 개별 케이스는 mean reversion 기대", "kill_criteria": "현금 소진(cash burn) 속도 > 할인폭 축소 속도"}, "cyclical_trough": {"name": "사이클 저점", "mispricing": "저점 이익 기반 고 P/E 착시, 공급 축소 미반영", "catalyst": "공급 구조조정, 재고 사이클 반전", "kill_criteria": "구조적 수요 감소를 사이클로 오인"}, "rerating_mix_shift": {"name": "사업 믹스 변화 / 재분류 리레이팅", "mispricing": "과거 업종 멀티플 적용 (예 - 하드웨어 → 반복매출)", "catalyst": "세그먼트 공시 변경, 신규 사업 비중 임계치 돌파, 지수/섹터 재분류", "kill_criteria": "신사업 성장률이 기존사업 감소를 상쇄 못함"}, "structural_discount_arb": {"name": "구조적 할인 차익 (지주사 할인, 우선주/보통주 괴리, 복수 상장)", "mispricing": "유동성·의결권·이중과세 등 구조적 요인", "catalyst": "지배구조 개편, 합병, 배당정책 (참고 - ../backtest_disparity 삼성 우선주 연구)", "kill_criteria": "catalyst 없이 '할인율이 높다'만으로 진입"}, "short_fraud_decline": {"name": "숏 — 회계 부정 / 구조적 쇠퇴 / 과열", "mispricing": "낙관적 회계·내러티브 과열", "catalyst": "감사 의견, 규제 조사, 가이던스 하향", "kill_criteria": "높은 차입비용·숏스퀴즈 리스크, 타이밍 불확실성 (unlimited downside)"}}, "cases": [{"id": "2000-11-14_GMP", "ticker": "GMP", "company": "Green Mountain Power Corp", "direction": "long", "vic": {"url": "https://www.valueinvestorsclub.com/idea/Green_Mountain_Power/8574767833", "author": "ran112", "post_date": "2000-11-14", "rating": null, "contest_winner": null}, "pattern": {"primary": "turnaround", "secondary": ["capital_allocation"]}, "tags": {"market_cap": "nano_lt_300m", "region": "us", "catalyst_clarity": "hard_dated"}, "valuation_at_pitch": {"ev_ebit": null, "pe": 4.7, "fcf_yield_pct": null, "p_b": null, "pitch_target_upside_pct": 82}, "thesis_summary": "Hydro-Québec 고정가 장기구매계약 + 1997년 이후 요금인상 거부로 EPS가 1985-96 평균 $2.20에서 1999년 $0.46으로 붕괴, 배당 $2.12→$0.55 삭감, 주가 $33→$8.25. 그 사이 인력 약 50% 감축 등 비용구조는 업계 최저 수준으로 슬림화. 2000-11-13 규제당국이 3.42% 요금인상을 예상 밖으로 승인 — 고정비가 이미 낮아 인상분 대부분이 이익으로 직결(피치 추정 +$0.85/주). 2001E EPS $1.75+ 기준 P/E 5배 미만, 동종 유틸리티 대비 최저.\n", "catalysts": ["2001-01 요금인상 발효 → 2001 EPS 약 2배", "단기차입 상환 후 배당 동결 해제 → 배당 성장", "(보너스) 금리 하락 시 유틸리티 전반 리레이팅"], "key_risks": ["Hydro-Québec 계약 손실 지속 (계약 잔존 약 10년)", "승인 조건부 배당 동결 장기화", "나노캡 유동성 / 커버리지 부재"], "entry": {"date": "2000-11-14", "price": 8.25}, "benchmark": "SPY", "price_points": [{"date": "2001-01-01", "price": 12.5}, {"date": "2001-12-31", "price": 18.65}], "dividends_per_share": {"2001": 0.55, "2002": 0.6, "2003": 0.76, "2004": 0.88, "2005": 1.0, "2006": 1.0, "2007": 0.25}, "terminal": {"event": "acquired", "date": "2007-04-12", "value_per_share": 35.0}, "outcome": {"thesis_played_out": true, "driver_of_return": "thesis", "lessons": "(1) 촉매가 '이미 공개'된 뒤에도 나노캡·무커버리지 종목은 수개월에 걸쳐 underreaction — 공시 다음날 매수해도 충분했음 (1/1/2001 $12.50 진입 시에도 CAGR 약 20%). (2) 핵심은 operating leverage 계산: 비용 구조가 이미 바닥이라 매출 +3.4%가 EPS +85-100%로 증폭. (3) 배당 회복은 피치보다 느렸음 (2002 YoC 7.3% vs 피치 12.7%), 그러나 결국 2005년 12% 도달. (4) 최종 수익의 상당 부분은 피치에 없던 M&A 프리미엄 (2006 인수) — 썸 오브 thesis + 옵션.\n", "one_liner": "규제 리셋 + 바닥 비용구조 → 요금 3.4% 인상이 EPS 2배로 증폭된 나노캡 유틸리티"}, "pitch_vs_actual": [{"item": "2001 EPS", "pitch": "$1.75+", "actual": "$1.85", "verdict": "hit"}, {"item": "목표 P/E", "pitch": "8.5x", "actual": "~10x (2001말)", "verdict": "beat"}, {"item": "2001말 가격", "pitch": "$15", "actual": "$18.65", "verdict": "beat"}, {"item": "배당 YoC", "pitch": "12.7% (2002)", "actual": "7.3% (2002) / 12.1% (2005)", "verdict": "late"}, {"item": "M&A", "pitch": "언급 없음", "actual": "$35 현금 인수 (2006 발표)", "verdict": "bonus"}], "devils_advocate": ["사후 선택 편향 — 동시기 '규제 승인 후 매수' 피치 전체의 base rate 미확인", "수익의 약 30-40%는 M&A 프리미엄(운). 미인수 가정 시 CAGR 약 22-25% (추정)", "실제 체결가 불확실 (11/14 갭업 가능) — 단 $12.50 진입에도 CAGR 약 20%", "2006-07 배당은 추정치, 2002-05 연말 주가 미확보"], "timeline": [{"date": "2000-11-13", "label": "VT PSB 요금 3.42% 인상 승인"}, {"date": "2000-11-14", "label": "VIC 피치 ($8.25)"}, {"date": "2001-01-21", "label": "요금인상 발효"}, {"date": "2002-12-01", "label": "배당 $0.55→$0.76 인상"}, {"date": "2006-06-22", "label": "Gaz Métro(NNEEC) $35 인수 발표"}, {"date": "2007-04-12", "label": "인수 종결"}], "result": {"id": "2000-11-14_GMP", "ticker": "GMP", "pattern": "turnaround", "direction": "long", "rating": null, "entry_date": "2000-11-14", "entry_price": 8.25, "exit_date": "2007-04-12", "exit_value": 40.04, "years": 6.406570841889117, "multiple": 4.8533333333333335, "cagr": 0.2796282710548481, "bench_cagr": null, "max_drawdown": null, "source": "manual", "horizon": {"1y": 1.3272727272727272, "3y": null, "5y": null}}}]};
+const P = DATA.patterns, C = DATA.cases;
+const esc = s => String(s ?? "").replace(/[&<>"]/g, ch => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[ch]));
+const pct = x => x == null || Number.isNaN(x) ? "n/a" : (x * 100).toFixed(1) + "%";
+const slug = id => "case-" + id.replace(/[^A-Za-z0-9]+/g, "-");
+const byPattern = k => C.filter(c => c.pattern.primary === k || (c.pattern.secondary || []).includes(k));
+const primaryOf = k => C.filter(c => c.pattern.primary === k);
+const median = a => { if (!a.length) return null; const s = [...a].sort((x, y) => x - y), m = s.length >> 1; return s.length % 2 ? s[m] : (s[m - 1] + s[m]) / 2; };
+const VERDICT = { hit: "적중", beat: "초과", late: "지연", bonus: "보너스", miss: "실패" };
+
+function go(h) { location.hash = h; }
+
+function renderNav(active) {
+  const keys = Object.keys(P).sort((a, b) => primaryOf(b).length - primaryOf(a).length);
+  document.getElementById("nav").innerHTML = keys.map(k => {
+    const n = primaryOf(k).length;
+    return `<button data-k="${k}" aria-current="${k === active}"><span>${esc(P[k].name)}</span><span class="cnt ${n ? "has" : ""}">${n}</span></button>`;
+  }).join("");
+  document.querySelectorAll("nav button").forEach(b => b.onclick = () => go(b.dataset.k));
+}
+
+function caseCard(c) {
+  const r = c.result;
+  return `<button class="card" data-id="${esc(c.id)}">
+    <div class="t">${esc(c.company)}<small>${esc(c.ticker)} · ${esc(c.vic.post_date)} · ${esc(c.direction.toUpperCase())}</small></div>
+    <div class="ol">${esc(c.outcome?.one_liner || "")}</div>
+    <div class="nums">
+      <div>${r.multiple.toFixed(2)}x<span>배수</span></div>
+      <div>${pct(r.cagr)}<span>CAGR</span></div>
+      <div>${r.years.toFixed(1)}y<span>보유</span></div>
+    </div></button>`;
+}
+
+function renderPattern(k) {
+  const p = P[k], prim = primaryOf(k), all = byPattern(k);
+  const sec = all.filter(c => !prim.includes(c));
+  const cagrs = prim.map(c => c.result.cagr);
+  const best = prim.length ? prim.reduce((a, b) => a.result.cagr > b.result.cagr ? a : b) : null;
+  document.getElementById("view").innerHTML = `
+    <div class="crumb">패턴</div>
+    <h1>${esc(p.name)}</h1>
+    <dl class="def">
+      <div><dt>왜 싸게 거래되나</dt><dd>${esc(p.mispricing)}</dd></div>
+      <div><dt>무엇이 가격을 정상화하나</dt><dd>${esc(p.catalyst)}</dd></div>
+      <div class="kill"><dt>Kill criteria</dt><dd>${esc(p.kill_criteria)}</dd></div>
+    </dl>
+    <div class="stats">
+      <div class="stat"><div class="k">케이스 수 (주패턴)</div><div class="v">${prim.length}</div></div>
+      <div class="stat"><div class="k">CAGR 중앙값</div><div class="v">${pct(median(cagrs))}</div></div>
+      <div class="stat"><div class="k">최저 배수</div><div class="v">${prim.length ? Math.min(...prim.map(c => c.result.multiple)).toFixed(2) + "x" : "n/a"}</div></div>
+      <div class="stat"><div class="k">대표 사례</div><div class="v" style="font:600 16px var(--f-body)">${best ? esc(best.company) : "—"}</div></div>
+    </div>
+    ${prim.length && prim.length < 5 ? `<div class="note">표본 ${prim.length}건: 일반화 금지. base rate(같은 유형 전체 피치의 성공 비율) 확보 전까지는 사례 모음으로만 읽을 것.</div>` : ""}
+    <section><h2>대표 사례</h2>
+      <div class="cards">${prim.length ? prim.sort((a, b) => b.result.cagr - a.result.cagr).map(caseCard).join("") : `<div class="empty">케이스 수집 중. cases/ 폴더에 YAML을 추가하면 이 목록에 나타남.</div>`}</div>
+    </section>
+    ${sec.length ? `<section><h2>보조 패턴으로 포함된 사례</h2><div class="cards">${sec.map(caseCard).join("")}</div></section>` : ""}`;
+  document.querySelectorAll(".card").forEach(b => b.onclick = () => go(slug(b.dataset.id)));
+}
+
+function chart(c) {
+  const r = c.result, entry = r.entry_date;
+  const pts = [{ d: entry, v: r.entry_price, k: "진입" }, ...(c.price_points || []).map(p => ({ d: p.date, v: p.price }))];
+  if (c.terminal?.event) pts.push({ d: c.terminal.date, v: c.terminal.value_per_share, k: "인수가" });
+  const t = s => new Date(s).getTime();
+  const W = 900, H = 300, L = 48, R = 20, T = 20, B = 96;
+  const x0 = t(entry), x1 = t(r.exit_date), vmax = Math.ceil(Math.max(...pts.map(p => p.v)) / 10) * 10;
+  const X = d => L + (t(d) - x0) / (x1 - x0) * (W - L - R), Y = v => T + (1 - v / vmax) * (H - T - B);
+  const grid = [0, .25, .5, .75, 1].map(f => { const v = vmax * f; return `<line x1="${L}" x2="${W - R}" y1="${Y(v)}" y2="${Y(v)}" stroke="var(--line)"/><text x="${L - 8}" y="${Y(v) + 4}" text-anchor="end">$${v}</text>`; }).join("");
+  const years = []; for (let y = new Date(entry).getFullYear() + 1; y <= new Date(r.exit_date).getFullYear(); y++) years.push(y);
+  const yt = years.map(y => `<text x="${X(y + "-01-01")}" y="${H - B + 16}" text-anchor="middle">${y}</text>`).join("");
+  let segs = "";
+  for (let i = 1; i < pts.length; i++) {
+    const gap = (t(pts[i].d) - t(pts[i - 1].d)) / 864e5 > 400;
+    segs += `<line x1="${X(pts[i - 1].d)}" y1="${Y(pts[i - 1].v)}" x2="${X(pts[i].d)}" y2="${Y(pts[i].v)}" stroke="var(--accent)" stroke-width="2.5" ${gap ? 'stroke-dasharray="5 5" opacity=".55"' : ""}/>`;
+  }
+  const area = `<path d="M${X(pts[0].d)},${Y(0)} ${pts.map(p => `L${X(p.d)},${Y(p.v)}`).join(" ")} L${X(pts.at(-1).d)},${Y(0)}Z" fill="var(--accent)" opacity=".07"/>`;
+  const dots = pts.map((p, i) => `<circle cx="${X(p.d)}" cy="${Y(p.v)}" r="${i === pts.length - 1 ? 5 : 3.5}" fill="var(--panel)" stroke="var(--accent)" stroke-width="2"/><text class="lbl" x="${X(p.d) + (i === pts.length - 1 ? -8 : 8)}" y="${Y(p.v) - 8}" text-anchor="${i === pts.length - 1 ? "end" : "start"}">$${p.v.toFixed(2)}</text>`).join("");
+  const ev = (c.timeline || []).map((e, i) => { const x = X(e.date); return `<line x1="${x}" x2="${x}" y1="${H - B + 24}" y2="${H - B + 30 + (i % 3) * 18}" stroke="var(--muted)"/><text class="lbl" x="${Math.min(x + 4, W - R)}" y="${H - B + 40 + (i % 3) * 18}" text-anchor="${x > W * .7 ? "end" : "start"}" font-size="11">${esc(e.label)}</text>`; }).join("");
+  return `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="가격 경로">${grid}${yt}${area}${segs}${dots}${ev}</svg>`;
+}
+
+function renderCase(c) {
+  const r = c.result, p = P[c.pattern.primary];
+  const v = c.valuation_at_pitch || {};
+  document.getElementById("view").innerHTML = `
+    <div class="crumb"><button data-go="${c.pattern.primary}">${esc(p.name)}</button> / 케이스</div>
+    <h1>${esc(c.company)} <span style="color:var(--muted);font:500 18px var(--f-mono)">${esc(c.ticker)}</span></h1>
+    <div class="chips">
+      <span class="chip long">${esc(c.direction.toUpperCase())}</span>
+      <span class="chip">${esc(p.name)}</span>
+      ${(c.pattern.secondary || []).map(s => `<span class="chip">+ ${esc(P[s]?.name || s)}</span>`).join("")}
+      <span class="chip">${esc(c.tags?.market_cap)}</span><span class="chip">${esc(c.tags?.region)}</span>
+      <span class="chip">catalyst: ${esc(c.tags?.catalyst_clarity)}</span>
+    </div>
+    <div class="kpis">
+      <div class="stat"><div class="k">총 배수 (배당 포함)</div><div class="v">${r.multiple.toFixed(2)}x</div></div>
+      <div class="stat"><div class="k">CAGR</div><div class="v">${pct(r.cagr)}</div></div>
+      <div class="stat"><div class="k">1년 수익</div><div class="v">${pct(r.horizon["1y"])}</div></div>
+      <div class="stat"><div class="k">진입 P/E</div><div class="v">${v.pe ?? "n/a"}x</div></div>
+      <div class="stat"><div class="k">보유 기간</div><div class="v">${r.years.toFixed(1)}y</div></div>
+    </div>
+    <section class="panel chart"><h2>가격 경로 · 진입 $${r.entry_price.toFixed(2)} → 청산 $${c.terminal?.value_per_share ?? "?"}</h2>${chart(c)}
+      <div class="src">점선 = 중간 가격 미확보 구간. 데이터 소스: ${esc(r.source)}. 벤치마크 대비: ${pct(r.bench_cagr)}</div></section>
+    <section class="panel"><h2>Thesis 요약</h2><p style="margin:0;max-width:68ch">${esc(c.thesis_summary)}</p></section>
+    <section class="panel"><h2>피치 예측 vs 실제</h2><div style="overflow-x:auto"><table>
+      <thead><tr><th>항목</th><th>피치</th><th>실제</th><th>판정</th></tr></thead>
+      <tbody>${(c.pitch_vs_actual || []).map(x => `<tr><td>${esc(x.item)}</td><td class="m">${esc(x.pitch)}</td><td class="m">${esc(x.actual)}</td><td><span class="pill ${esc(x.verdict)}">${VERDICT[x.verdict] || esc(x.verdict)}</span></td></tr>`).join("")}</tbody>
+    </table></div></section>
+    <div class="two">
+      <section class="panel"><h2>교훈 (패턴 근거)</h2><ul class="tight">${(c.outcome?.lessons || "").split(/\s*\(\d\)\s*/).filter(Boolean).map(s => `<li>${esc(s)}</li>`).join("")}</ul></section>
+      <section class="panel devil"><h2>Devil's advocate</h2><ul class="tight">${(c.devils_advocate || []).map(s => `<li>${esc(s)}</li>`).join("")}</ul></section>
+    </div>
+    <div class="src">원문: <a href="${esc(c.vic.url)}">${esc(c.vic.url)}</a> · 작성자 ${esc(c.vic.author)} · VIC 원문은 저작권 보호, 본 요약은 자체 작성</div>`;
+  document.querySelector("[data-go]").onclick = e => go(e.target.dataset.go);
+}
+
+function route() {
+  const h = location.hash.slice(1);
+  const c = C.find(x => slug(x.id) === h);
+  if (c) { renderNav(c.pattern.primary); renderCase(c); }
+  else { const k = P[h] ? h : (C[0]?.pattern.primary || Object.keys(P)[0]); renderNav(k); renderPattern(k); }
+  document.querySelector("main").scrollTop = 0;
+}
+addEventListener("hashchange", route);
+route();
+</script>
+</body>
+</html>

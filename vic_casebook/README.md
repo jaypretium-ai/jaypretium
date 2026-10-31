@@ -49,3 +49,13 @@ python casebook.py
 | 2 | 상위 평점 전수 200-300건 + base rate | 패턴별 hit rate / median excess CAGR |
 | 3 | 앱 MVP (Streamlit: 패턴·지역·시총 필터, 케이스 카드) | 내부 툴 |
 | 4 | 책: 패턴별 챕터 = 대표 승리 2 + 실패 1 + 체크리스트 | 출판 |
+
+## 앱 (MVP)
+
+```bash
+python build_app.py   # → app/index.html (단일 정적 파일, 브라우저로 열기)
+```
+
+- 좌측: 패턴 12종 + 케이스 수 / 우측: 패턴 정의(원인·촉매·kill criteria) → 대표 사례 카드 → 케이스 상세
+- 케이스 상세: KPI, 가격 경로 + 이벤트 타임라인, thesis, 피치 vs 실제, 교훈, devil's advocate
+- 데이터는 `cases/*.yaml` 에서 자동 생성 → 케이스 추가 후 재빌드만 하면 됨
