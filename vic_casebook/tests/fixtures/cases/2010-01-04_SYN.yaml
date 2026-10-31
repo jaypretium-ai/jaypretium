@@ -1,0 +1,7 @@
+# 합성 데이터 (테스트 전용, 실존 종목 아님)
+id: 2010-01-04_SYN
+ticker: SYN
+direction: long
+vic: {url: null, author: test, post_date: 2010-01-04, rating: null}
+pattern: {primary: spinoff, secondary: []}
+benchmark: BENCH
