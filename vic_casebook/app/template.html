@@ -200,7 +200,7 @@ function chart(c) {
   }
   const area = `<path d="M${X(pts[0].d)},${Y(0)} ${pts.map(p => `L${X(p.d)},${Y(p.v)}`).join(" ")} L${X(pts.at(-1).d)},${Y(0)}Z" fill="var(--accent)" opacity=".07"/>`;
   const dots = pts.map((p, i) => `<circle cx="${X(p.d)}" cy="${Y(p.v)}" r="${i === pts.length - 1 ? 5 : 3.5}" fill="var(--panel)" stroke="var(--accent)" stroke-width="2"/><text class="lbl" x="${X(p.d) + (i === pts.length - 1 ? -8 : 8)}" y="${Y(p.v) - 8}" text-anchor="${i === pts.length - 1 ? "end" : "start"}">$${p.v.toFixed(2)}</text>`).join("");
-  const ev = (c.timeline || []).map((e, i) => { const x = X(e.date); return `<line x1="${x}" x2="${x}" y1="${H - B + 24}" y2="${H - B + 30 + (i % 3) * 18}" stroke="var(--muted)"/><text class="lbl" x="${Math.min(x + 4, W - R)}" y="${H - B + 40 + (i % 3) * 18}" text-anchor="${x > W * .7 ? "end" : "start"}" font-size="11">${esc(e.label)}</text>`; }).join("");
+  const ev = (c.timeline || []).filter(e => t(e.date) >= x0).map((e, i) => { const x = X(e.date); return `<line x1="${x}" x2="${x}" y1="${H - B + 24}" y2="${H - B + 30 + (i % 3) * 18}" stroke="var(--muted)"/><text class="lbl" x="${Math.min(x + 4, W - R)}" y="${H - B + 40 + (i % 3) * 18}" text-anchor="${x > W * .7 ? "end" : "start"}" font-size="11">${esc(e.label)}</text>`; }).join("");
   return `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="가격 경로">${grid}${yt}${area}${segs}${dots}${ev}</svg>`;
 }
 
