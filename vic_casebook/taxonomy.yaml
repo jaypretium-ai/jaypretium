@@ -4,6 +4,12 @@
 #   섹터/스타일 라벨(예: '테크', '성장주')은 패턴이 아니다.
 
 patterns:
+  mutual_conversion:
+    name: 상호회사 전환 IPO (demutualization)
+    mispricing: 신규 상장 + 커버리지 부재 + 기존 자본 위에 IPO 대금이 얹혀 P/B 0.4-0.7x에서 출발 (thrift 전환과 동일 구조)
+    catalyst: 주주 중심 경영 전환, 과잉자본 → 자사주 매입, 잠금기간 후 M&A 허용 (통상 3년)
+    kill_criteria: 준비금 부족으로 장부가 자체가 과대계상된 경우, 과잉자본을 저수익 확장에 투입
+
   spinoff:
     name: 스핀오프 / 분할
     mispricing: 모회사 주주의 강제 매도(지수 제외, mandate 불일치), 애널리스트 커버리지 부재

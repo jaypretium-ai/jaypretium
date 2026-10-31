@@ -277,7 +277,7 @@ function renderCase(c) {
       <section class="panel"><h2>교훈 (패턴 근거)</h2><ul class="tight">${(c.outcome?.lessons || "").split(/\s*\(\d\)\s*/).filter(Boolean).map(s => `<li>${esc(s)}</li>`).join("")}</ul></section>
       <section class="panel devil"><h2>Devil's advocate</h2><ul class="tight">${(c.devils_advocate || []).map(s => `<li>${esc(s)}</li>`).join("")}</ul></section>
     </div>
-    <div class="src">원문: <a href="${esc(c.vic.url)}">${esc(c.vic.url)}</a> · 작성자 ${esc(c.vic.author)} · VIC 원문은 저작권 보호, 본 요약은 자체 작성</div>`;
+    <div class="src">원문: ${c.vic.url ? `<a href="${esc(c.vic.url)}">${esc(c.vic.url)}</a>` : "URL 미확인"} · 작성자 ${esc(c.vic.author || "미확인")} · VIC 원문은 저작권 보호, 본 요약은 자체 작성</div>`;
   document.querySelector("[data-go]").onclick = e => go(e.target.dataset.go);
 }
 

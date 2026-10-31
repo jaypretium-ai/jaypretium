@@ -1,0 +1,137 @@
+id: 2000-12-29_ACAP
+ticker: ACAP             # Nasdaq, 2010-10 현금 인수로 상장폐지 → 수동 가격점 사용
+company: American Physicians Capital
+direction: long
+
+vic:
+  url: null              # 확인 필요 (검색상 VIC idea id 1561354188 존재하나 본 피치인지 미확인)
+  author: null
+  post_date: 2000-12-29  # [est] 피치 날짜 미확인. 근거: IPO 2000-12-08 이후, 3Q00 수치 사용, 가격 $15
+  rating: null
+  contest_winner: null
+
+pattern:
+  primary: mutual_conversion
+  secondary: [deep_value, capital_allocation]
+tags:
+  market_cap: nano_lt_300m
+  region: us
+  catalyst_clarity: none
+
+valuation_at_pitch:
+  ev_ebit: null
+  pe: 7.7                # $15 / ABN AMRO 2001E EPS $1.95 (trailing 기준은 약 15x)
+  fcf_yield_pct: null
+  p_b: 0.44              # [pitch] — 주식수와의 정합성 미검증
+  pitch_target_upside_pct: null
+
+thesis_summary: >
+  1975년 설립된 미시간 의사 상호회사 출신 의료과실(med mal)·산재보험사. 2000-12 상호회사 전환 IPO($13.50).
+  $15에서 P/B 약 0.44x (동종 약 1.0x). 2001 EPS는 (1) 손해율 개선 +$0.50, (2) 채권 포트폴리오 재배분으로
+  운용수익률 5%→5.5-6% +$0.30-0.60, (3) 비수익 라인(건강·개인) 철수 +$0.25로 약 $1.95 가능.
+  준비금은 비할인 방식으로 보수적이고 사고연도 손해 추이가 유리. 개별 촉매는 평범하나 누적 효과로
+  EPS 상승 + 동종 수준 멀티플 회복 기대.
+
+thesis_detail:
+  variant_perception: >
+    시장: 막 상장한 소형 med mal 보험사 — trailing EPS 약 $1로 '싸지 않다'. 피치: 상호회사 전환으로 이익 극대화
+    유인이 처음 생겼고, 운용수익·라인 철수·손해율이라는 경영진이 통제 가능한 레버만으로 EPS가 약 2배 [pitch].
+    그 위에 P/B 0.44x라는 자산가치 안전마진이 있음.
+  background:
+    - 1975 미시간 의사들이 설립한 상호회사 (MICOA) — 대형사들의 med mal 철수 공백
+    - 1996 켄터키 KMIC 인수 + 병원·의사그룹 대상 산재보험 진출, 1999 오하이오·플로리다 확장
+    - 2000-12-08 IPO 10.3M주 x $13.50 — 상호회사 → 주식회사 전환
+    - 1999 매출 $187M (운용수익 $31M), 9M00 순이익 $8.8M [pitch]
+    - 미시간·켄터키 1위, 뉴멕시코 2위. 의사 13,000명 이상 커버, 유지율 81% [pitch]
+  mechanism:
+    - 합산비율 117.2 (1999) → 109 (9M00). 운용수익 포함 operating ratio 98.1% → 90% [pitch]
+    - 손해율 개선 +$0.50, 운용수익 +$0.30-0.60, 라인 철수 +$0.25 → 2001E EPS $1.95 (ABN AMRO, IPO 주관사) [pitch]
+    - 운용자산 $600M+ 중 채권 80% → 회사채 비중 확대로 수익률 5% → 5.5-6% [pitch]
+    - 1건당 보유 한도 $0.5M, 나머지 재보험 → 대형 손실 변동성 제한 [pitch]
+    - KMIC 통합 비용절감 연 $2M, 단 관리회사 SCMC 인수 상각 연 $1M으로 일부 상쇄 [pitch]
+  valuation:
+    - P/B - 0.44x vs 동종 약 1.0x → 동종 수준 회복 시 upside 약 +125% [pitch]
+    - P/E - 2001E $1.95 x 동종 12x [est] = $23
+    - 결과적으로 2001-08 $22.43 도달 [actual] — 1년 내 P/E 경로는 맞았음
+  scenarios:   # 1년 기준, 진입 $15. 확률은 자체 추정 [est]
+    - {name: Bull, prob: 0.40, price: 24, logic: "EPS $1.95 x 12x, P/B 약 0.7x"}
+    - {name: Base, prob: 0.40, price: 19, logic: "EPS $1.50 x 12.5x"}
+    - {name: Bear, prob: 0.20, price: 11, logic: "준비금 추가 적립, P/B 0.3x"}
+  market_missed:
+    - 상호회사 전환 IPO의 구조적 저평가 — 기존 자본 + IPO 대금 위에서 낮은 P/B로 출발
+    - 이익 극대화 유인이 '처음으로' 생긴 조직 — 과거 실적은 비영리적 운영의 결과
+    - 과잉자본 → 이후 자사주 매입 여력 (2006년 분할 전 주식수 약 7.8M주 [actual])
+  monitoring:
+    - 분기 사고연도 손해율 및 전년도 준비금 추이 (favorable → adverse 전환 여부)
+    - 운용수익률 5.5% 도달 여부
+    - 플로리다 등 신규 주 손해율 — 확장 지역이 가장 위험
+    - CEO 소유 대리점(매출 59%) 관계 변화
+  kill_criteria:
+    - 전년도 준비금 adverse development 발생 (보수적 준비금 thesis 기각)
+    - 합산비율 개선 정체 (2001 내 105 이하 미달성)
+    - 과잉자본을 저수익 확장 또는 고가 인수에 투입
+
+catalysts:
+  - 손해율 개선 (+$0.50 EPS)
+  - 운용수익 증가 (+$0.30 EPS)
+  - 비수익 라인 철수 (+$0.25 EPS)
+  - 동종 대비 낮은 P/B
+  - 경영진의 인수 통한 확장 의지
+key_risks:
+  - med mal 장기꼬리 리스크 — 준비금 부족 시 장부가 자체가 훼손
+  - 경영진 고령화 / 승계
+  - CEO가 79% 보유한 대리점이 매출 59% — 이해상충·키맨 리스크
+  - 경쟁 심화 → 요율 적정성
+
+entry:
+  date: 2000-12-29       # [est]
+  price: 15.00           # [pitch]
+benchmark: SPY
+
+# 주식분할: 2006-11 3:2, 2009-07 4:3 → 누적 2.0배. 아래 가격은 모두 '원 주식(IPO 당시 1주)' 기준으로 환산
+price_points:
+  - {date: 2001-08-24, price: 22.43}   # 분할 전 원가격
+  - {date: 2003-06-30, price: 24.48}   # 분할 전 원가격
+  - {date: 2010-07-07, price: 63.52}   # 인수 발표 전일 $31.76 x 2.0
+dividends_per_share: {}  # 2008 이후 배당 존재했으나 금액 미확인 → 미반영 (보수적)
+
+terminal:
+  event: acquired        # The Doctors Company, 2010-07-08 발표 $41.50/주 현금, 2010-10 종결
+  date: 2010-10-22       # [est] 종결일 ±1주
+  value_per_share: 83.00 # $41.50 x 분할 누적 2.0
+
+outcome:
+  thesis_played_out: partial
+  driver_of_return: other    # 1년 EPS 경로는 맞았으나 장기 수익은 하드마켓 + 자사주 + M&A
+  lessons: >
+    (1) 상호회사 전환 IPO는 낮은 P/B + 과잉자본 + 처음 생긴 이익 유인이라는 구조적 엣지 — 개별 촉매가
+    평범해도 작동. (2) 단, 피치의 '보수적 준비금' 주장은 틀림 — 2003-3Q $77.1M 순손실(-$9.03/주) 준비금
+    적립. 장부가 할인이 이 충격을 흡수한 안전마진 역할. (3) 장기 수익의 주 원천은 2003-06 med mal 하드마켓
+    (요율 급등), 산재·플로리다 철수로 핵심 사업 집중, 대규모 자사주 매입(행동주의 Stilwell 이사회 진입),
+    2010 인수 프리미엄 31%. (4) 피치가 예상하지 못한 경로로 수익 — '싸게 산 좋은 자산'의 옵션 가치.
+  catalyst_foreseeability: >
+    개별 촉매는 경영진 통제 하의 점진적 개선으로 예측 가능했으나, 실제 수익을 만든 하드마켓 사이클과
+    M&A는 피치에 없음. 반대로 2003 준비금 쇼크도 피치에 없던 리스크.
+  one_liner: P/B 0.44x 상호회사 전환 IPO — 준비금 쇼크를 장부가 할인이 흡수, 하드마켓·자사주·인수로 9.8년 5.5배
+
+pitch_vs_actual:
+  - {item: 1년 주가 경로, pitch: "동종 P/E 회복", actual: "$22.43 (2001-08, +50%)", verdict: hit}
+  - {item: 보수적 준비금, pitch: "비할인·유리한 추이", actual: "2003-3Q $77.1M 손실, 준비금 적립", verdict: miss}
+  - {item: 비수익 라인 철수, pitch: "건강·개인", actual: "산재·건강·플로리다·네바다까지 철수 (2004)", verdict: beat}
+  - {item: 인수 통한 확장, pitch: "경영진 의지", actual: "PIC Wisconsin 지분 인수 시도 (2004)", verdict: late}
+  - {item: M&A (피인수), pitch: 언급 없음, actual: "$41.50 x 2.0 = 원주식 $83 (2010)", verdict: bonus}
+devils_advocate:
+  - 핵심 안전장치였던 '보수적 준비금' 주장이 틀림 — 2003 손실 시 보유자는 상당한 낙폭 경험 (MDD 미확인)
+  - 수익 대부분이 피치 밖 요인 (하드마켓 사이클, 행동주의, M&A) — thesis 적중이 아니라 '싸게 산 덕'
+  - 피치 날짜·URL 미확인, 진입일은 추정. 피치의 P/B 산식은 IPO 주식수와 정합성 불확실
+  - 배당 미반영 (보수적), 2003-06 연말 주가 미확보
+  - 벤치마크(S&P 500) 같은 기간 연 약 1% 추정 — 2000-10은 '잃어버린 10년'이라 초과수익이 과대 보일 수 있음
+timeline:
+  - {date: 2000-12-08, label: IPO $13.50 (상호회사 전환)}
+  - {date: 2000-12-29, label: VIC 피치 $15 (날짜 추정)}
+  - {date: 2001-08-24, label: $22.43}
+  - {date: 2003-10-30, label: '3Q03 준비금 적립, 순손실 $77.1M'}
+  - {date: 2004-03-01, label: 산재·플로리다 철수, med mal 집중}
+  - {date: 2006-11-01, label: 3:2 분할}
+  - {date: 2009-07-31, label: 4:3 분할}
+  - {date: 2010-07-08, label: The Doctors Co. $41.50 인수 발표}
