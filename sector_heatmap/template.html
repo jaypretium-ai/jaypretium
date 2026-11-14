@@ -1,0 +1,415 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>한국 소섹터 월별 히트맵</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans+KR:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+/* layout: header + findings strip, one control row, full-width heatmap table with sticky sector column, method notes below */
+:root {
+  color-scheme: light;
+  --bg: #f6f6f3;
+  --surface: #fcfcfb;
+  --ink: #0b0b0b;
+  --ink-2: #52514e;
+  --muted: #898781;
+  --line: #e1e0d9;
+  --accent: #1f4f8a;
+  --up: #d03b3b;      /* Korean convention: up = red */
+  --down: #2a78d6;    /* down = blue */
+  --mid: #f0efec;
+  --font-body: "IBM Plex Sans KR", "Apple SD Gothic Neo", "Malgun Gothic", system-ui, sans-serif;
+  --font-num: "IBM Plex Mono", ui-monospace, "SFMono-Regular", Menlo, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    color-scheme: dark;
+    --bg: #0d0d0d;
+    --surface: #1a1a19;
+    --ink: #f0efec;
+    --ink-2: #c3c2b7;
+    --muted: #898781;
+    --line: #2c2c2a;
+    --accent: #7fb0ea;
+    --up: #e5534b;
+    --down: #3987e5;
+    --mid: #383835;
+  }
+}
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --bg: #0d0d0d;
+  --surface: #1a1a19;
+  --ink: #f0efec;
+  --ink-2: #c3c2b7;
+  --muted: #898781;
+  --line: #2c2c2a;
+  --accent: #7fb0ea;
+  --up: #e5534b;
+  --down: #3987e5;
+  --mid: #383835;
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; }
+body {
+  background: var(--bg);
+  color: var(--ink);
+  font-family: var(--font-body);
+  font-size: 14px;
+  line-height: 1.5;
+}
+.wrap { max-width: 1440px; margin: 0 auto; padding: 24px 20px 48px; display: grid; gap: 18px; }
+header h1 { font-size: 22px; font-weight: 700; margin: 0; letter-spacing: -0.01em; text-wrap: balance; }
+header p { margin: 4px 0 0; color: var(--ink-2); font-size: 13px; }
+.num { font-family: var(--font-num); font-variant-numeric: tabular-nums; }
+
+.findings { display: grid; grid-template-columns: repeat(auto-fit, minmax(230px, 1fr)); gap: 10px; }
+.find { background: var(--surface); border: 1px solid var(--line); border-left: 3px solid var(--tone, var(--muted)); border-radius: 6px; padding: 10px 12px; display: grid; gap: 2px; }
+.find .k { font-size: 12px; color: var(--ink-2); }
+.find .v { font-size: 15px; font-weight: 600; }
+.find .d { font-size: 12px; color: var(--muted); }
+.find.up { --tone: var(--up); }
+.find.down { --tone: var(--down); }
+
+.controls { display: flex; flex-wrap: wrap; gap: 10px 18px; align-items: center; }
+.ctl { display: flex; align-items: center; gap: 8px; }
+.ctl > span { font-size: 12px; color: var(--ink-2); }
+.seg { display: inline-flex; border: 1px solid var(--line); border-radius: 6px; overflow: hidden; background: var(--surface); }
+.seg button { font: inherit; font-size: 13px; padding: 6px 12px; border: 0; background: transparent; color: var(--ink-2); cursor: pointer; }
+.seg button + button { border-left: 1px solid var(--line); }
+.seg button[aria-pressed="true"] { background: var(--ink); color: var(--surface); }
+select { font: inherit; font-size: 13px; padding: 6px 8px; border: 1px solid var(--line); border-radius: 6px; background: var(--surface); color: var(--ink); }
+button:focus-visible, select:focus-visible, td.cell:focus-visible, th.sortable:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+
+.legend { display: flex; align-items: center; gap: 8px; font-size: 12px; color: var(--ink-2); margin-left: auto; }
+.legend .bar { width: 160px; height: 10px; border-radius: 3px; background: linear-gradient(90deg, var(--down), var(--mid), var(--up)); }
+
+.panel { background: var(--surface); border: 1px solid var(--line); border-radius: 8px; overflow: hidden; }
+.panel-head { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 6px 16px; padding: 10px 14px; border-bottom: 1px solid var(--line); font-size: 13px; color: var(--ink-2); }
+.panel-head b { color: var(--ink); font-weight: 600; }
+.scroll { overflow-x: auto; }
+table { border-collapse: separate; border-spacing: 2px; font-size: 12px; min-width: 100%; }
+th, td { padding: 0; }
+thead th { font-weight: 500; color: var(--ink-2); padding: 6px 2px 4px; text-align: center; white-space: nowrap; font-family: var(--font-num); font-size: 11px; }
+thead th.hl { color: var(--ink); font-weight: 600; box-shadow: inset 0 -2px 0 var(--accent); }
+th.sortable { cursor: pointer; user-select: none; }
+th.sortable:hover { color: var(--ink); }
+th.sortable .arr { color: var(--accent); }
+th.rowh, td.rowh { position: sticky; left: 0; z-index: 2; background: var(--surface); text-align: left; padding: 0 10px 0 12px; white-space: nowrap; min-width: 168px; }
+td.rowh .g { display: inline-block; font-size: 10px; color: var(--muted); width: 52px; }
+td.rowh .s { font-size: 12.5px; color: var(--ink); font-weight: 500; }
+tr.bench td.rowh .s { font-weight: 700; }
+tr.sep td { height: 6px; }
+td.cell { min-width: 46px; height: 26px; text-align: center; border-radius: 3px; font-family: var(--font-num); font-variant-numeric: tabular-nums; font-size: 11.5px; cursor: default; }
+td.cell.na { color: var(--muted); background: transparent; }
+td.cell.tot { font-weight: 600; box-shadow: inset 2px 0 0 var(--surface); }
+td.cell:hover { outline: 1.5px solid var(--ink); outline-offset: -1px; }
+
+.tip { position: fixed; z-index: 10; pointer-events: none; background: var(--surface); color: var(--ink); border: 1px solid var(--line); border-radius: 6px; padding: 8px 10px; font-size: 12px; box-shadow: 0 6px 20px rgba(0,0,0,.18); max-width: 300px; display: none; }
+.tip .t1 { font-weight: 600; margin-bottom: 4px; }
+.tip .row { display: flex; justify-content: space-between; gap: 16px; }
+.tip .row span:first-child { color: var(--ink-2); }
+.tip .mem { margin-top: 6px; color: var(--muted); font-size: 11px; }
+
+.notes { display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 14px; }
+.notes section { background: var(--surface); border: 1px solid var(--line); border-radius: 8px; padding: 12px 14px; }
+.notes h2 { font-size: 13px; margin: 0 0 6px; }
+.notes ul { margin: 0; padding-left: 18px; color: var(--ink-2); font-size: 12.5px; max-width: 72ch; }
+.notes li + li { margin-top: 3px; }
+.members { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 4px 16px; font-size: 12px; color: var(--ink-2); }
+.members b { color: var(--ink); font-weight: 500; }
+@media (max-width: 480px) {
+  .wrap { padding: 16px 16px 40px; }
+  .legend { margin-left: 0; }
+  th.rowh, td.rowh { min-width: 120px; }
+  td.rowh .g { display: none; }
+}
+@media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1>한국 소섹터 월별 수익률 히트맵</h1>
+    <p>33개 소섹터 · 대표 종목 동일가중 · 주가 기준(배당 제외) · 2014-09 ~ <span id="asof"></span> · 출처: 네이버 금융 일별 수정주가</p>
+  </header>
+
+  <div class="findings" id="findings"></div>
+
+  <div class="controls">
+    <div class="ctl"><span>보기</span>
+      <div class="seg" role="group" aria-label="보기">
+        <button type="button" id="v-month" aria-pressed="true">월별 실적</button>
+        <button type="button" id="v-season" aria-pressed="false">계절성 (월평균)</button>
+      </div>
+    </div>
+    <div class="ctl"><span>기준</span>
+      <div class="seg" role="group" aria-label="기준">
+        <button type="button" id="b-abs" aria-pressed="true">절대 수익률</button>
+        <button type="button" id="b-xs" aria-pressed="false">코스피 대비</button>
+      </div>
+    </div>
+    <div class="ctl" id="period-wrap"><label for="period"><span>기간</span></label>
+      <select id="period"></select>
+    </div>
+    <div class="ctl"><label for="sort"><span>정렬</span></label>
+      <select id="sort">
+        <option value="group">섹터 그룹순</option>
+        <option value="col">선택 열 (헤더 클릭)</option>
+      </select>
+    </div>
+    <div class="legend"><span class="num" id="lg-lo"></span><div class="bar" aria-hidden="true"></div><span class="num" id="lg-hi"></span><span>상승 빨강 · 하락 파랑</span></div>
+  </div>
+
+  <div class="panel">
+    <div class="panel-head"><span id="ph-l"></span><span id="ph-r"></span></div>
+    <div class="scroll"><table id="hm"></table></div>
+  </div>
+
+  <div class="notes">
+    <section>
+      <h2>읽는 법 · 한계</h2>
+      <ul>
+        <li>계절성: 2014-2025년 12개 해의 같은 달 평균. 셀에 마우스를 올리면 중앙값, 승률, t-stat, 관측 수가 나옵니다.</li>
+        <li>|t| ≥ 2 정도만 우연이 아닐 가능성이 높습니다. 33개 섹터를 동시에 보므로 1-2개는 우연일 수 있습니다.</li>
+        <li>바스켓은 현재 대표 종목 기준이라 생존편향이 있습니다. 상장 이후 구간만 반영됩니다(예: 에이피알 2024, LG에너지솔루션 2022).</li>
+        <li>배당을 뺀 주가 수익률입니다. 12월 은행·통신·보험 약세의 일부는 배당락 영향입니다.</li>
+        <li><span class="num">2026-11</span>은 월초부터 기준일까지 누적(MTD)입니다.</li>
+      </ul>
+    </section>
+    <section>
+      <h2>바스켓 구성</h2>
+      <div class="members" id="members"></div>
+    </section>
+  </div>
+</div>
+<div class="tip" id="tip" role="tooltip"></div>
+
+<script id="data" type="application/json">__DATA__</script>
+<script>
+(function () {
+  const D = JSON.parse(document.getElementById('data').textContent);
+  const M = D.months, N = M.length;
+  const MON = ['1월','2월','3월','4월','5월','6월','7월','8월','9월','10월','11월','12월'];
+  const LAST = M[N - 1];
+  document.getElementById('asof').textContent = D.asof;
+
+  const st = { view: 'month', basis: 'abs', period: 'recent24', sort: 'group', sortCol: null, sortDir: -1 };
+
+  const sectors = D.sectors.map((s, i) => ({ ...s, idx: i }));
+  const bench = [{ g: '지수', s: '코스피', r: D.kospi, m: [] }, { g: '지수', s: '코스닥', r: D.kosdaq, m: [] }];
+
+  const fmt = (v, d = 1) => v == null || isNaN(v) ? '–' : (v > 0 ? '+' : '') + v.toFixed(d);
+  const xs = (r, i) => (r[i] == null || D.kospi[i] == null) ? null : r[i] - D.kospi[i];
+  const val = (r, i) => st.basis === 'abs' ? r[i] : xs(r, i);
+
+  function stats(arr) {
+    const a = arr.filter(v => v != null);
+    const n = a.length; if (!n) return null;
+    const mean = a.reduce((x, y) => x + y, 0) / n;
+    const s = [...a].sort((x, y) => x - y);
+    const med = n % 2 ? s[(n - 1) / 2] : (s[n / 2 - 1] + s[n / 2]) / 2;
+    const sd = n > 1 ? Math.sqrt(a.reduce((x, y) => x + (y - mean) ** 2, 0) / (n - 1)) : 0;
+    return { mean, med, hit: a.filter(v => v > 0).length / n * 100, t: sd ? mean / (sd / Math.sqrt(n)) : 0, n, min: s[0], max: s[n - 1] };
+  }
+  // seasonality: full years 2014-2025
+  function seasonal(r, mo, basis) {
+    const vals = [];
+    M.forEach((m, i) => {
+      const y = +m.slice(0, 4), mm = +m.slice(5);
+      if (mm === mo && y >= 2014 && y <= 2025) vals.push(basis === 'abs' ? r[i] : xs(r, i));
+    });
+    return stats(vals);
+  }
+  function compound(vs) { let p = 1, ok = false; vs.forEach(v => { if (v != null) { p *= 1 + v / 100; ok = true; } }); return ok ? (p - 1) * 100 : null; }
+
+  // period options
+  const sel = document.getElementById('period');
+  const years = [...new Set(M.map(m => m.slice(0, 4)))].reverse();
+  sel.innerHTML = '<option value="recent24">최근 24개월</option><option value="recent12">최근 12개월</option>' + years.map(y => `<option value="${y}">${y}년</option>`).join('');
+
+  function monthCols() {
+    let idx;
+    if (st.period === 'recent24') idx = M.map((_, i) => i).slice(-24);
+    else if (st.period === 'recent12') idx = M.map((_, i) => i).slice(-12);
+    else idx = M.map((m, i) => m.startsWith(st.period) ? i : -1).filter(i => i >= 0);
+    return idx;
+  }
+
+  // color: diverging, Korean convention
+  function bg(v, cap) {
+    if (v == null || isNaN(v)) return null;
+    const a = Math.min(Math.abs(v) / cap, 1);
+    const pct = Math.round(Math.pow(a, 0.8) * 100);
+    return { bg: `color-mix(in oklab, ${v >= 0 ? 'var(--up)' : 'var(--down)'} ${pct}%, var(--mid))`, strong: pct > 58 };
+  }
+
+  const tip = document.getElementById('tip');
+  function showTip(e, htmlStr) {
+    tip.innerHTML = htmlStr; tip.style.display = 'block';
+    const r = e.target.getBoundingClientRect();
+    const w = tip.offsetWidth, h = tip.offsetHeight;
+    let x = r.left + r.width / 2 - w / 2, y = r.top - h - 8;
+    if (y < 8) y = r.bottom + 8;
+    x = Math.max(8, Math.min(x, window.innerWidth - w - 8));
+    tip.style.left = x + 'px'; tip.style.top = y + 'px';
+  }
+  function hideTip() { tip.style.display = 'none'; }
+  const row = (k, v) => `<div class="row"><span>${k}</span><span class="num">${v}</span></div>`;
+
+  function build() {
+    const isM = st.view === 'month';
+    document.getElementById('period-wrap').style.display = isM ? '' : 'none';
+    const cap = isM ? (st.basis === 'abs' ? 15 : 10) : (st.basis === 'abs' ? 6 : 5);
+    document.getElementById('lg-lo').textContent = '−' + cap + '%';
+    document.getElementById('lg-hi').textContent = '+' + cap + '%';
+
+    let cols, totLabel;
+    if (isM) {
+      const idx = monthCols();
+      cols = idx.map(i => ({ key: 'm' + i, label: M[i].slice(2).replace('-', '.') + (M[i] === LAST ? '*' : ''), i, hl: M[i] === LAST }));
+      totLabel = '누적';
+      cols.push({ key: 'tot', label: totLabel, tot: true });
+    } else {
+      cols = MON.map((l, k) => ({ key: 's' + (k + 1), label: l, mo: k + 1, hl: k >= 10 }));
+      cols.push({ key: 'nd', label: '11+12월', tot: true });
+    }
+
+    const cellVal = (r, c) => {
+      if (isM) {
+        if (c.tot) {
+          const idx = cols.filter(x => !x.tot).map(x => x.i);
+          const a = compound(idx.map(i => r[i]));
+          if (st.basis === 'abs') return a;
+          const k = compound(idx.map(i => r[i] == null ? null : D.kospi[i]));
+          return a == null || k == null ? null : a - k;
+        }
+        return val(r, c.i);
+      }
+      if (c.tot) { const a = seasonal(r, 11, st.basis), b = seasonal(r, 12, st.basis); return a && b ? a.mean + b.mean : null; }
+      const s = seasonal(r, c.mo, st.basis); return s ? s.mean : null;
+    };
+
+    // sort
+    let list = [...sectors];
+    if (st.sort === 'col' && st.sortCol) {
+      const c = cols.find(x => x.key === st.sortCol) || cols[cols.length - 1];
+      list.sort((a, b) => {
+        const va = cellVal(a.r, c), vb = cellVal(b.r, c);
+        if (va == null) return 1; if (vb == null) return -1;
+        return st.sortDir < 0 ? vb - va : va - vb;
+      });
+    }
+
+    const t = document.getElementById('hm');
+    let h = '<thead><tr><th class="rowh" scope="col">섹터</th>';
+    cols.forEach(c => {
+      const arr = st.sort === 'col' && st.sortCol === c.key ? `<span class="arr">${st.sortDir < 0 ? ' ▼' : ' ▲'}</span>` : '';
+      h += `<th scope="col" class="sortable${c.hl ? ' hl' : ''}" tabindex="0" data-k="${c.key}">${c.label}${arr}</th>`;
+    });
+    h += '</tr></thead><tbody>';
+    const rowHtml = (s, isBench) => {
+      let x = `<tr class="${isBench ? 'bench' : ''}"><td class="rowh"><span class="g">${s.g}</span><span class="s">${s.s}</span></td>`;
+      cols.forEach(c => {
+        const v = (isBench && st.basis === 'xs' && s.s === '코스피') ? null : cellVal(s.r, c);
+        const col = bg(v, c.tot ? cap * (isM ? 2 : 1.6) : cap);
+        const style = col ? `background:${col.bg};color:${col.strong ? '#fff' : 'var(--ink)'}` : '';
+        x += `<td class="cell${col ? '' : ' na'}${c.tot ? ' tot' : ''}" tabindex="0" style="${style}" data-s="${isBench ? 'b' + s.s : s.idx}" data-k="${c.key}">${fmt(v)}</td>`;
+      });
+      return x + '</tr>';
+    };
+    bench.forEach(b => h += rowHtml(b, true));
+    h += `<tr class="sep"><td colspan="${cols.length + 1}"></td></tr>`;
+    list.forEach(s => h += rowHtml(s, false));
+    t.innerHTML = h + '</tbody>';
+
+    const basisTxt = st.basis === 'abs' ? '절대 수익률 (%)' : '코스피 대비 초과수익 (%p)';
+    document.getElementById('ph-l').innerHTML = isM
+      ? `<b>월별 실적</b> · ${basisTxt}`
+      : `<b>계절성</b> · 2014-2025 같은 달 평균 · ${basisTxt}`;
+    document.getElementById('ph-r').textContent = isM ? `* ${LAST}은 ${D.asof}까지 MTD · 헤더 클릭 시 정렬` : '11·12월 강조 · 헤더 클릭 시 정렬';
+
+    // interactions
+    t.querySelectorAll('th.sortable').forEach(th => {
+      const go = () => {
+        const k = th.dataset.k;
+        if (st.sort === 'col' && st.sortCol === k) st.sortDir *= -1; else { st.sortCol = k; st.sortDir = -1; }
+        st.sort = 'col'; document.getElementById('sort').value = 'col'; build();
+      };
+      th.addEventListener('click', go);
+      th.addEventListener('keydown', e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); go(); } });
+    });
+    t.querySelectorAll('td.cell').forEach(td => {
+      const show = e => {
+        const sid = td.dataset.s, k = td.dataset.k;
+        const s = sid[0] === 'b' ? bench.find(b => 'b' + b.s === sid) : sectors[+sid];
+        const c = cols.find(x => x.key === k);
+        if (s.s === '코스피' && st.basis === 'xs') { showTip(e, '<div class="t1">코스피</div>초과수익의 기준 지수입니다.'); return; }
+        let body = '';
+        if (isM && !c.tot) {
+          const i = c.i;
+          body = `<div class="t1">${s.s} · ${M[i]}${M[i] === LAST ? ' (MTD)' : ''}</div>` +
+            row('절대 수익률', fmt(s.r[i]) + '%') + row('코스피', fmt(D.kospi[i]) + '%') +
+            (s.s !== '코스피' ? row('초과수익', fmt(xs(s.r, i)) + '%p') : '');
+        } else if (isM) {
+          body = `<div class="t1">${s.s} · 기간 누적</div>` + row(st.basis === 'abs' ? '누적 수익률' : '코스피 대비', fmt(+td.textContent) + (st.basis === 'abs' ? '%' : '%p'));
+        } else if (c.tot) {
+          const a = seasonal(s.r, 11, st.basis), b = seasonal(s.r, 12, st.basis);
+          body = `<div class="t1">${s.s} · 11월 + 12월 평균 합</div>` + row('11월 평균', fmt(a && a.mean)) + row('12월 평균', fmt(b && b.mean)) + row('합계', fmt(a && b ? a.mean + b.mean : null));
+        } else {
+          const z = seasonal(s.r, c.mo, st.basis);
+          body = `<div class="t1">${s.s} · ${c.label} (2014-2025)</div>` + (z ? (
+            row('평균', fmt(z.mean) + (st.basis === 'abs' ? '%' : '%p')) + row('중앙값', fmt(z.med)) +
+            row(st.basis === 'abs' ? '상승 확률' : '코스피 이긴 확률', z.hit.toFixed(0) + '%') +
+            row('t-stat', fmt(z.t)) + row('최저 / 최고', fmt(z.min, 0) + ' / ' + fmt(z.max, 0)) + row('관측 수', z.n + '년')) : row('데이터', '없음'));
+        }
+        if (s.m && s.m.length) body += `<div class="mem">${s.m.join(', ')}</div>`;
+        showTip(e, body);
+      };
+      td.addEventListener('mouseenter', show);
+      td.addEventListener('focus', show);
+      td.addEventListener('mouseleave', hideTip);
+      td.addEventListener('blur', hideTip);
+    });
+  }
+
+  // findings (computed from the data)
+  function findings() {
+    const dec = sectors.map(s => ({ s, z: seasonal(s.r, 12, 'xs') })).filter(x => x.z);
+    dec.sort((a, b) => b.z.mean - a.z.mean);
+    const top = dec[0], bot = [...dec].sort((a, b) => a.z.t - b.z.t)[0];
+    const iL = N - 1;
+    const mtd = sectors.map(s => ({ s, v: s.r[iL] })).filter(x => x.v != null).sort((a, b) => b.v - a.v);
+    const f = [
+      { c: 'up', k: '12월 계절성 1위 (코스피 대비)', v: `${top.s.s} ${fmt(top.z.mean)}%p`, d: `승률 ${top.z.hit.toFixed(0)}% · t ${top.z.t.toFixed(1)} · 2014-2025` },
+      { c: 'down', k: '12월 계절성 최약 (t-stat 기준)', v: `${bot.s.s} ${fmt(bot.z.mean)}%p`, d: `승률 ${bot.z.hit.toFixed(0)}% · t ${bot.z.t.toFixed(1)}` },
+      { c: 'up', k: `${LAST} MTD 1위`, v: `${mtd[0].s.s} ${fmt(mtd[0].v)}%`, d: `코스피 ${fmt(D.kospi[iL])}% · ${D.asof} 기준` },
+      { c: 'down', k: `${LAST} MTD 최하위`, v: `${mtd[mtd.length - 1].s.s} ${fmt(mtd[mtd.length - 1].v)}%`, d: `코스닥 ${fmt(D.kosdaq[iL])}%` },
+    ];
+    document.getElementById('findings').innerHTML = f.map(x => `<div class="find ${x.c}"><span class="k">${x.k}</span><span class="v num">${x.v}</span><span class="d">${x.d}</span></div>`).join('');
+  }
+
+  document.getElementById('members').innerHTML = sectors.map(s => `<div><b>${s.s}</b> · ${s.m.join(', ')}</div>`).join('');
+
+  const setPressed = (on, off) => { document.getElementById(on).setAttribute('aria-pressed', 'true'); document.getElementById(off).setAttribute('aria-pressed', 'false'); };
+  document.getElementById('v-month').onclick = () => { st.view = 'month'; st.sortCol = null; if (st.sort === 'col') st.sort = 'group'; document.getElementById('sort').value = st.sort; setPressed('v-month', 'v-season'); build(); };
+  document.getElementById('v-season').onclick = () => { st.view = 'season'; st.sortCol = null; if (st.sort === 'col') st.sort = 'group'; document.getElementById('sort').value = st.sort; setPressed('v-season', 'v-month'); build(); };
+  document.getElementById('b-abs').onclick = () => { st.basis = 'abs'; setPressed('b-abs', 'b-xs'); build(); };
+  document.getElementById('b-xs').onclick = () => { st.basis = 'xs'; setPressed('b-xs', 'b-abs'); build(); };
+  sel.onchange = () => { st.period = sel.value; st.sortCol = null; if (st.sort === 'col') { st.sort = 'group'; document.getElementById('sort').value = 'group'; } build(); };
+  document.getElementById('sort').onchange = e => {
+    st.sort = e.target.value;
+    if (st.sort === 'col' && !st.sortCol) { st.sortCol = st.view === 'month' ? 'tot' : 'nd'; st.sortDir = -1; }
+    build();
+  };
+  window.addEventListener('scroll', hideTip, { passive: true });
+
+  findings();
+  build();
+})();
+</script>
+</body>
+</html>
